@@ -19,6 +19,8 @@ tasks:
     actions:
       - cmd: |
           echo "This is a test task."
+        shell:
+          linux: bash
 
   - name: lab:init
     actions:
@@ -26,17 +28,21 @@ tasks:
           set -euo pipefail
           cd "${TOFU_DIR}"
           tofu init
+        shell:
+          linux: bash
 
   - name: lab:up
     actions:
       - cmd: |
           set -euo pipefail
           cd "${TOFU_DIR}"
-          tofu apply -auto-approve \
+          TF_LOG=INFO tofu apply -auto-approve \
             -var="k8s_flavor=${K8S_FLAVOR}" \
             -var="cluster_id=${CLUSTER_ID}" \
             -var="inventory_file=${INVENTORY}" \
             -var="mode=${MODE}"
+        shell:
+          linux: bash
 
   - name: lab:kubeconfig
     actions:
@@ -44,6 +50,8 @@ tasks:
           set -euo pipefail
           cd "${TOFU_DIR}"
           tofu output -raw kubeconfig_path
+        shell:
+          linux: bash
 
   - name: lab:status
     actions:
@@ -52,8 +60,12 @@ tasks:
           cd "${TOFU_DIR}"
           KUBECONFIG="$(tofu output -raw kubeconfig_path)"
           kubectl --kubeconfig "$KUBECONFIG" get nodes -o wide
+        shell:
+          linux: bash
 
   - name: lab:down
     actions:
       - cmd: |
           UDS_MODE=down uds run lab:up
+        shell:
+          linux: bash
