@@ -1,0 +1,59 @@
+variables:
+  - name: K8S_FLAVOR
+    default: k3s
+
+  - name: CLUSTER_ID
+    default: lab-001
+
+  - name: INVENTORY
+    default: inventory/nodes.yaml
+
+  - name: TOFU_DIR
+    default: infra/envs/lab
+
+  - name: MODE
+    default: up
+
+tasks:
+  - name: small:test
+    actions:
+      - cmd: |
+          echo "This is a test task."
+
+  - name: lab:init
+    actions:
+      - cmd: |
+          set -euo pipefail
+          cd "${TOFU_DIR}"
+          tofu init
+
+  - name: lab:up
+    actions:
+      - cmd: |
+          set -euo pipefail
+          cd "${TOFU_DIR}"
+          tofu apply -auto-approve \
+            -var="k8s_flavor=${K8S_FLAVOR}" \
+            -var="cluster_id=${CLUSTER_ID}" \
+            -var="inventory_file=${INVENTORY}" \
+            -var="mode=${MODE}"
+
+  - name: lab:kubeconfig
+    actions:
+      - cmd: |
+          set -euo pipefail
+          cd "${TOFU_DIR}"
+          tofu output -raw kubeconfig_path
+
+  - name: lab:status
+    actions:
+      - cmd: |
+          set -euo pipefail
+          cd "${TOFU_DIR}"
+          KUBECONFIG="$(tofu output -raw kubeconfig_path)"
+          kubectl --kubeconfig "$KUBECONFIG" get nodes -o wide
+
+  - name: lab:down
+    actions:
+      - cmd: |
+          UDS_MODE=down uds run lab:up

@@ -1,0 +1,21 @@
+# OpenTofu
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+
+# Kubeconfigs / outputs
+kubeconfig*
+kubeconfigs/
+*.kubeconfig
+
+# SSH / secrets
+*.key
+*.pem
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
