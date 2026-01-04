@@ -1,0 +1,231 @@
+# Copyright 2024 Defense Unicorns
+# SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Defense-Unicorns-Commercial
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/uds-cli/refs/heads/main/uds.schema.json
+kind: UDSBundle
+metadata:
+  name: roosevelt-bootstrap
+  description: A UDS bundle for deploying Istio and UDS Operator to a cluster
+  version: "0.0.1"
+
+x-uds: &uds-core-version
+  # renovate: datasource=docker depName=ghcr.io/defenseunicorns/packages/private/uds/core-base
+  ref: 0.58.1-unicorn
+
+packages:
+  - name: init
+    repository: ghcr.io/zarf-dev/packages/init
+    ref: v0.68.1
+
+  - name: metallb
+    repository: ghcr.io/uds-packages/metallb
+    ref: 0.15.2-uds.4-upstream
+
+  # Deploy uds-core base functional layer which includes istio, uds-operator, and uds CRDs
+  - name: core-base
+    repository: ghcr.io/defenseunicorns/packages/private/uds/core-base
+    <<: *uds-core-version
+    overrides:
+      pepr-uds-core:
+        module:
+          values:
+            - path: watcher.livenessProbe
+              value:
+                initialDelaySeconds: 60
+            - path: admission.livenessProbe
+              value:
+                initialDelaySeconds: 60
+          variables:
+            - name: PEPR_WATCHER_MEMORY_REQUEST
+              description: "Memory requests for the pepr watcher pod"
+              path: "watcher.resources.requests.memory"
+              default: "64Mi"
+            - name: PEPR_ADMISSION_MEMORY_REQUEST
+              description: "Memory requests for the pepr admission pods"
+              path: "admission.resources.requests.memory"
+              default: "64Mi"
+            - name: PEPR_WATCHER_CPU_REQUEST
+              description: "CPU requests for the pepr watcher pod"
+              path: "watcher.resources.requests.cpu"
+              default: "100m"
+            - name: PEPR_ADMISSION_CPU_REQUEST
+              description: "CPU requests for the pepr admission pods"
+              path: "admission.resources.requests.cpu"
+              default: "100m"
+
+  - name: minio-operator
+    repository: ghcr.io/defenseunicorns/packages/private/uds/minio-operator
+    ref: 7.1.1-uds.5-unicorn
+    overrides:
+      minio-operator:
+        uds-minio-config:
+          values:
+            - path: apps
+              value:
+                - name: loki
+                  namespace: loki
+                  remoteSelector:
+                    app.kubernetes.io/name: loki
+                  bucketNames:
+                    - uds-loki-chunks
+                    - uds-loki-ruler
+                    - uds-loki-admin
+                  copyPassword:
+                    enabled: true
+                - name: velero
+                  namespace: velero
+                  remoteSelector:
+                    app.kubernetes.io/name: velero
+                  bucketNames:
+                    - uds-velero
+                  copyPassword:
+                    enabled: true
+                    secretIDKey: AWS_ACCESS_KEY_ID
+                    secretPasswordKey: AWS_SECRET_ACCESS_KEY
+                # gitlab buckets
+                - name: gitlab
+                  namespace: gitlab
+                  bucketNames:
+                    - uds-gitlab-artifacts
+                    - uds-gitlab-backups
+                    - uds-gitlab-ci-secure-files
+                    - uds-gitlab-dependency-proxy
+                    - uds-gitlab-lfs
+                    - uds-gitlab-mr-diffs
+                    - uds-gitlab-packages
+                    - uds-gitlab-pages
+                    - uds-gitlab-terraform-state
+                    - uds-gitlab-uploads
+                    - uds-gitlab-registry
+                    - uds-gitlab-tmp
+                  policy: ""
+                  copyPassword:
+                    enabled: true
+                    secretName: "gitlab-minio"
+                    secretIDKey: "access_key"
+                    secretPasswordKey: "secret_key"
+
+ # - name: postgres-operator
+  #   repository: ghcr.io/defenseunicorns/packages/uds/postgres-operator
+  #   ref: 1.14.0-uds.12-upstream
+  #   overrides:
+  #     postgres-operator:
+  #       uds-postgres-config:
+  #         values:
+  #           - path: postgresql
+  #             value:
+  #               enabled: true
+  #               teamId: "uds"
+  #               volume:
+  #                 size: "10Gi"
+  #               numberOfInstances: 3
+  #               users:
+  #                 keycloak.keycloak: [] # database owner
+  #                 grafana.grafana: []
+  #                 gitlab.gitlab: []
+  #               databases:
+  #                 keycloakdb: keycloak.keycloak
+  #                 grafanadb: grafana.grafana
+  #                 gitlabdb: gitlab.gitlab
+  #               version: "16"
+  #               ingress:
+  #                 - remoteNamespace: keycloak
+  #                 - remoteNamespace: grafana
+  #                 - remoteNamespace: gitlab
+
+  # - name: core-secrets
+  #   path: ../../packages/core-secrets
+  #   ref: 0.1.0
+  #   exports:
+  #     - name: KC_DB_PASSWORD
+
+  - name: core-identity-authorization
+    repository: ghcr.io/defenseunicorns/packages/private/uds/core-identity-authorization
+    <<: *uds-core-version
+    overrides:
+      keycloak:
+        keycloak:
+          values:
+            - path: insecureAdminPasswordGeneration.enabled
+              value: true
+
+  - name: core-logging
+    repository: ghcr.io/defenseunicorns/packages/private/uds/core-logging
+    <<: *uds-core-version
+    overrides:
+      loki:
+        loki:
+          values:
+            - path: loki.storage.bucketNames.chunks
+              value: "uds-loki-chunks"
+            - path: loki.storage.bucketNames.ruler
+              value: "uds-loki-ruler"
+            - path: loki.storage.bucketNames.admin
+              value: "uds-loki-admin"
+            - path: loki.storage.s3.endpoint
+              value: http://uds-minio-hl.minio.svc.cluster.local:9000/
+            - path: loki.storage.s3.region
+              value: ""
+            - path: loki.storage.s3.accessKeyId
+              value: ${LOKI_ACCESS_KEY_ID}
+            - path: loki.storage.s3.secretAccessKey
+              value: ${LOKI_SECRET_ACCESS_KEY}
+            - path: loki.storage.s3.s3ForcePathStyle
+              value: true
+            - path: loki.storage.s3.signatureVersion
+              value: "v4"
+            - path: write.extraArgs
+              value:
+                - "-config.expand-env=true"
+            - path: write.extraEnv
+              value:
+                - name: LOKI_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-loki
+                      key: accessKey
+                - name: LOKI_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-loki
+                      key: secretKey
+            - path: read.extraArgs
+              value:
+                - "-config.expand-env=true"
+            - path: read.extraEnv
+              value:
+                - name: LOKI_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-loki
+                      key: accessKey
+                - name: LOKI_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-loki
+                      key: secretKey
+
+  - name: core-monitoring
+    repository: ghcr.io/defenseunicorns/packages/private/uds/core-monitoring
+    <<: *uds-core-version
+
+  - name: ui
+    repository: ghcr.io/defenseunicorns/packages/private/uds/uds-ui
+    ref: 0.23.1-unicorn
+    overrides:
+      uds-ui:
+        uds-ui:
+          values:
+            - path: resources.requests.memory
+              value: "1Gi"
+            - path: resources.limits.memory
+              value: "10Gi"
+            - path: resources.requests.cpu
+              value: "100m"
+            - path: resources.limits.cpu
+              value: "4000m"
+            # Explicitly enable istio sidecar
+            - path: package.serviceMeshMode
+              value: "sidecar"
+              #TODO: re-enable ambient mode when authservice supports it
+              #value: "ambient"

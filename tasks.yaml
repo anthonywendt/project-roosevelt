@@ -2,6 +2,7 @@
 includes:
   - create: ./tasks/create.yaml
   - deploy: ./tasks/deploy.yaml
+  - setup: https://raw.githubusercontent.com/defenseunicorns/uds-common/v1.22.0/tasks/setup.yaml
 
 variables:
   - name: K8S_FLAVOR
@@ -20,13 +21,6 @@ variables:
     default: up
 
 tasks:
-  - name: small:test
-    actions:
-      - cmd: |
-          echo "This is a test task."
-        shell:
-          linux: bash
-
   - name: lab:init
     actions:
       - cmd: |
@@ -37,6 +31,22 @@ tasks:
           linux: bash
 
   - name: lab:up
+    actions:
+      - task: lab:init
+      - cmd: |
+          UDS_MODE=up uds run lab:apply
+        shell:
+          linux: bash
+      - task: lab:kubeconfig
+
+  - name: lab:down
+    actions:
+      - cmd: |
+          UDS_MODE=down uds run lab:apply
+        shell:
+          linux: bash
+
+  - name: lab:apply
     actions:
       - cmd: |
           set -euo pipefail
@@ -68,14 +78,7 @@ tasks:
         shell:
           linux: bash
 
-  - name: lab:down
-    actions:
-      - cmd: |
-          UDS_MODE=down uds run lab:up
-        shell:
-          linux: bash
-
-  - name: create-slim-base-bundle
+  - name: create-bootstrap-bundle
     actions:
       - task: create:package
         with:
@@ -83,10 +86,10 @@ tasks:
           architecture: amd64
       - task: create:bundle
         with:
-          path: bundles/slim-base-bundle
+          path: bundles/bootstrap-bundle
           architecture: amd64
 
-  - name: deploy-slim-base-bundle
+  - name: deploy-bootstrap-bundle
     inputs:
       config_file_name:
         description: File name relative to the value of the path input var to use for the uds-config file
@@ -94,6 +97,16 @@ tasks:
     actions:
       - task: deploy:deploy-bundle
         with:
-          path: bundles/slim-base-bundle
+          path: bundles/bootstrap-bundle
           config_file_name: ${{ .inputs.config_file_name }}
           architecture: amd64
+
+  - name: create-keycloak-user
+    description: Add a new user to the cluster for testing purposes
+    actions:
+      - task: setup:keycloak-user
+        with:
+          username: anthony
+          first_name: Anthony
+          last_name: Wendt
+          group: "UDS Core/Admin"
