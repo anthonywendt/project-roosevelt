@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/maru-runner/main/tasks.schema.json
+tasks:
+  - name: deploy-bundle
+    description: Deploy the created bundle
+    inputs:
+      path:
+        description: Path relative to the repositories root where the uds-bundle.yaml and .tar.zst lives
+        default: bundles/core
+      config_file_name:
+        description: File name relative to the value of the path input var to use for the uds-config file
+        default: uds-config.yaml
+      options:
+        description: For setting deploy time variables and flags
+      architecture:
+        description: The architecture of the package to deploy
+        default: ${UDS_ARCH}
+    actions:
+      - description: Get the current UDS Bundle name
+        cmd: cat ${{ .inputs.path }}/uds-bundle.yaml | ./uds zarf tools yq .metadata.name
+        setVariables:
+          - name: BUNDLE_NAME
+      - description: Get the current UDS Bundle version
+        cmd: cat ${{ .inputs.path }}/uds-bundle.yaml | ./uds zarf tools yq .metadata.version
+        setVariables:
+          - name: BUNDLE_VERSION
+      # - description: Decrypt encrypted bundle values and merge with unencrypted
+      #   cmd: yq eval-all "select(fileIndex == 0) * select(fileIndex == 1)" <( [ -f ${{ .inputs.path }}/uds-config.enc.yaml ] && sops -d ${{ .inputs.path }}/uds-config.enc.yaml || echo "{}" ) ${{ .inputs.path }}/uds-config.yaml > ${{ .inputs.path }}/merged-uds-config.yaml
+      #   shell:
+      #     linux: bash
+      #     darwin: zsh
+      - description: Deploy the UDS bundle with the package and its dependencies
+        env:
+          - UDS_CONFIG=${{ .inputs.path }}/${{ .inputs.config_file_name }}
+        cmd: ./uds deploy "${{ .inputs.path }}/uds-bundle-${BUNDLE_NAME}-${{ .inputs.architecture }}-${BUNDLE_VERSION}.tar.zst" --confirm --no-progress ${{ .inputs.options }}

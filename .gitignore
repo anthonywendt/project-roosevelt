@@ -19,3 +19,9 @@ kubeconfigs/
 .idea/
 *.swp
 *~
+
+*.tar.gz
+*.tar.zst
+*.img
+*.raw
+~/

@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/maru-runner/main/tasks.schema.json
+tasks:
+  - name: package
+    description: Create a Zarf Package in the repository
+    inputs:
+      options:
+        description: For setting create time variables and flags
+      path:
+        description: Path to the zarf package definition being created
+      architecture:
+        description: The architecture of the package to create
+        default: ${UDS_ARCH}
+      config:
+        description: Optionally provide a path to a Zarf config file
+        default: ""
+        required: false
+    actions:
+      - env:
+          - ZARF_CONFIG=${{ .inputs.config }}
+        cmd: ./uds zarf package create ${{ .inputs.path }} --insecure --confirm --no-progress --architecture="${{ .inputs.architecture }}" --output ${{ .inputs.path }} ${{ .inputs.options }}
+
+  - name: bundle
+    description: Create a Zarf Package in the repository
+    inputs:
+      options:
+        description: For setting create time variables and flags
+      path:
+        description: Path to the bundle definition being created
+      architecture:
+        description: The architecture of the package to create
+        default: ${UDS_ARCH}
+    actions:
+      - cmd: ./uds create ${{ .inputs.path }} --confirm --insecure --no-progress --architecture="${{ .inputs.architecture }}" --output ${{ .inputs.path }} ${{ .inputs.options }}

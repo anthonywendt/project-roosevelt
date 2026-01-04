@@ -1,0 +1,6 @@
+# Copyright 2025 Defense Unicorns
+# SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Defense-Unicorns-Commercial
+
+variables:
+  metallb:
+    IP_ADDRESS_POOL: 192.168.69.200-192.168.69.210
