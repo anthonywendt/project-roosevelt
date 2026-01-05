@@ -224,8 +224,3 @@ packages:
               value: "100m"
             - path: resources.limits.cpu
               value: "4000m"
-            # Explicitly enable istio sidecar
-            - path: package.serviceMeshMode
-              value: "sidecar"
-              #TODO: re-enable ambient mode when authservice supports it
-              #value: "ambient"

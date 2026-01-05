@@ -9,3 +9,24 @@ nodes:
     host: 127.0.0.1
     role: controlplane
     node_ip: 192.168.69.10
+
+  # - name: peter1
+  #   host: 192.168.69.11
+  #   role: controlplane
+  #   node_ip: 192.168.69.11
+  #   labels:
+  #     roosevelt.node: holland
+
+  # - name: peter2
+  #   host: 192.168.69.12
+  #   role: worker
+  #   node_ip: 192.168.69.12
+  #   labels:
+  #     roosevelt.node: maguire
+
+  # - name: peter3
+  #   host: 192.168.69.13
+  #   role: worker
+  #   node_ip: 192.168.69.13
+  #   labels:
+  #     roosevelt.node: garfield
