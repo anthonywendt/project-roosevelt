@@ -2,83 +2,63 @@
 includes:
   - create: ./tasks/create.yaml
   - deploy: ./tasks/deploy.yaml
+  - lab: ./tasks/lab.yaml
   - setup: https://raw.githubusercontent.com/defenseunicorns/uds-common/v1.22.0/tasks/setup.yaml
 
-variables:
-  - name: K8S_FLAVOR
-    default: k3s
-
-  - name: CLUSTER_ID
-    default: lab-001
-
-  - name: INVENTORY
-    default: inventory/nodes.yaml
-
-  - name: TOFU_DIR
-    default: infra/envs/lab
-
-  - name: MODE
-    default: up
-
 tasks:
-  - name: lab:init
+  - name: k3s-full
+    description: Bring up the k3s lab and build/deploy the bootstrap bundle
     actions:
-      - cmd: |
-          set -euo pipefail
-          cd "${TOFU_DIR}"
-          tofu init
-        shell:
-          linux: bash
+      - task: k3s-lab-up
+      - task: full-bootstrap
 
-  - name: lab:up
+  - name: k3s-lab-up
+    description: Bring up the lab environment through k8s
     actions:
-      - task: lab:init
-      - cmd: |
-          UDS_MODE=up uds run lab:apply
-        shell:
-          linux: bash
+      - task: lab:apply
+        with:
+          path: infra/envs/lab
+          k8s_flavor: k3s
+          cluster_id: lab-001
+          inventory: inventory/nodes.yaml
+          mode: up
+      - task: k3s-lab-status
+      - task: k3s-lab-kubeconfig
+
+  - name: k3s-lab-down
+    description: Bring down the lab environment through k8s
+    actions:
+      - task: lab:apply
+        with:
+          path: infra/envs/lab
+          k8s_flavor: k3s
+          cluster_id: lab-001
+          inventory: inventory/nodes.yaml
+          mode: down
+
+  - name: k3s-lab-kubeconfig
+    description: Get the kubeconfig path for the k3s lab environment
+    actions:
       - task: lab:kubeconfig
+        with:
+          path: infra/envs/lab
 
-  - name: lab:down
+  - name: k3s-lab-status
+    description: Get the status of the k3s lab environment
     actions:
-      - cmd: |
-          UDS_MODE=down uds run lab:apply
-        shell:
-          linux: bash
+      - task: lab:status
+        with:
+          path: infra/envs/lab
 
-  - name: lab:apply
+  - name: full-bootstrap
+    description: Create and deploy the bootstrap bundle, then create a Keycloak user
     actions:
-      - cmd: |
-          set -euo pipefail
-          cd "${TOFU_DIR}"
-          TF_LOG=INFO tofu apply -auto-approve \
-            -var="k8s_flavor=${K8S_FLAVOR}" \
-            -var="cluster_id=${CLUSTER_ID}" \
-            -var="inventory_file=${INVENTORY}" \
-            -var="mode=${MODE}"
-        shell:
-          linux: bash
-
-  - name: lab:kubeconfig
-    actions:
-      - cmd: |
-          set -euo pipefail
-          cd "${TOFU_DIR}"
-          tofu output -raw kubeconfig_path
-        shell:
-          linux: bash
-
-  - name: lab:status
-    actions:
-      - cmd: |
-          set -euo pipefail
-          cd "${TOFU_DIR}"
-          KUBECONFIG="$(tofu output -raw kubeconfig_path)"
-          kubectl --kubeconfig "$KUBECONFIG" get nodes -o wide
-        shell:
-          linux: bash
+      - task: create-bootstrap-bundle
+      - task: deploy-bootstrap-bundle
+      - task: create-keycloak-user
 
   - name: create-bootstrap-bundle
+    description: Create the core-secrets package and bootstrap bundle
     actions:
       - task: create:package
         with:
@@ -90,6 +70,7 @@ tasks:
           architecture: amd64
 
   - name: deploy-bootstrap-bundle
+    description: Deploy the bootstrap bundle to the cluster
     inputs:
       config_file_name:
         description: File name relative to the value of the path input var to use for the uds-config file
@@ -102,7 +83,7 @@ tasks:
           architecture: amd64
 
   - name: create-keycloak-user
-    description: Add a new user to the cluster for testing purposes
+    description: Add a new keycloak user to the cluster for testing purposes
     actions:
       - task: setup:keycloak-user
         with:

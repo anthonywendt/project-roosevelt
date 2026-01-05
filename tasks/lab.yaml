@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/maru-runner/main/tasks.schema.json
+tasks:
+  - name: init
+    description: Initialize the tofu environment
+    inputs:
+      path:
+        description: Path to the tofu environment directory
+        required: true
+    actions:
+      - cmd: |
+          set -euo pipefail
+          tofu init
+        dir: ${{ .inputs.path }}
+        shell:
+          linux: bash
+
+  - name: apply
+    description: Apply the tofu (bring up or down)
+    inputs:
+      path:
+        description: Path to the tofu environment directory
+        required: true
+      k8s_flavor:
+        description: The Kubernetes flavor to use
+        required: true
+      cluster_id:
+        description: The cluster ID to use
+        required: true
+      inventory:
+        description: The inventory file to use
+        required: true
+      mode:
+        description: The mode to run tofu in (up/down)
+        required: true
+    actions:
+      - task: init
+        with:
+          path: ${{ .inputs.path }}
+      - cmd: |
+          set -euo pipefail
+          TF_LOG=INFO tofu apply -auto-approve \
+            -var="k8s_flavor=${{ .inputs.k8s_flavor }}" \
+            -var="cluster_id=${{ .inputs.cluster_id }}" \
+            -var="inventory_file=${{ .inputs.inventory }}" \
+            -var="mode=${{ .inputs.mode }}"
+        dir: ${{ .inputs.path }}
+        shell:
+          linux: bash
+
+  - name: kubeconfig
+    description: Get the kubeconfig location for cluster
+    inputs:
+      path:
+        description: Path to the tofu environment directory
+        required: true
+    actions:
+      - cmd: |
+          set -euo pipefail
+          tofu output -raw kubeconfig_path
+        dir: ${{ .inputs.path }}
+        shell:
+          linux: bash
+
+  - name: status
+    description: Get the cluster status
+    inputs:
+      path:
+        description: Path to the tofu environment directory
+        required: true
+    actions:
+      - cmd: |
+          set -euo pipefail
+          KUBECONFIG="$(tofu output -raw kubeconfig_path)"
+          kubectl --kubeconfig "$KUBECONFIG" get nodes -o wide
+        dir: ${{ .inputs.path }}
+        shell:
+          linux: bash

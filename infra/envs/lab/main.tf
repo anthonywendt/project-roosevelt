@@ -21,7 +21,7 @@ locals {
   kubeconfig_remote_path = "/home/${local.ssh_user}/kubeconfigs/${var.k8s_flavor}-${var.cluster_id}.yaml"
 
   # kubeconfig path ON the machine running tofu (sharin)
-  kubeconfig_local_path = "${path.module}/kubeconfigs/${var.k8s_flavor}-${var.cluster_id}.yaml"
+  kubeconfig_local_path = abspath("${path.module}/kubeconfigs/${var.k8s_flavor}-${var.cluster_id}.yaml")
 }
 
 # -------------------------
