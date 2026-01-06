@@ -22,8 +22,12 @@ tasks:
           cluster_id: lab-001
           inventory: inventory/nodes.yaml
           mode: up
-      - task: k3s-lab-status
-      - task: k3s-lab-kubeconfig
+      - task: lab:status
+        with:
+          path: infra/envs/lab
+      - task: lab:kubeconfig
+        with:
+          path: infra/envs/lab
 
   - name: k3s-lab-down
     description: Bring down the lab environment through k8s
@@ -36,19 +40,47 @@ tasks:
           inventory: inventory/nodes.yaml
           mode: down
 
-  - name: k3s-lab-kubeconfig
-    description: Get the kubeconfig path for the k3s lab environment
+  - name: lab-kubeconfig
+    description: Get the kubeconfig path for the lab environment
     actions:
       - task: lab:kubeconfig
         with:
           path: infra/envs/lab
 
-  - name: k3s-lab-status
-    description: Get the status of the k3s lab environment
+  - name: lab-status
+    description: Get the status of the lab environment
     actions:
       - task: lab:status
         with:
           path: infra/envs/lab
+
+  - name: k0s-lab-up
+    description: Bring up the k0s lab environment through k8s
+    actions:
+      - task: lab:apply
+        with:
+          path: infra/envs/lab
+          k8s_flavor: k0s
+          cluster_id: lab-001
+          inventory: inventory/nodes.yaml
+          mode: up
+      - task: lab:status
+        with:
+          path: infra/envs/lab
+      - task: lab:kubeconfig
+        with:
+          path: infra/envs/lab
+
+  - name: k0s-lab-down
+    description: Bring down the k0s lab environment through k8s
+    actions:
+      - task: lab:apply
+        with:
+          path: infra/envs/lab
+          k8s_flavor: k0s
+          cluster_id: lab-001
+          inventory: inventory/nodes.yaml
+          mode: down
 
   - name: full-bootstrap
     description: Create and deploy the bootstrap bundle, then create a Keycloak user

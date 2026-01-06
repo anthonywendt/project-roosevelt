@@ -4,24 +4,30 @@ locals {
 
   ssh_user = local.inv.ssh_user
 
-  # Keep your existing key convention
   ssh_key_path    = "~/.ssh/project_roosevelt_ed25519"
   ssh_private_key = file(pathexpand(local.ssh_key_path))
 
-  # Select nodes by role
   controlplanes = [for n in local.inv.nodes : n if n.role == "controlplane"]
   cp            = local.controlplanes[0]
 
-  # Workers map for for_each (must be a map, not a list)
   workers = { for n in local.inv.nodes : n.name => n if n.role == "worker" }
 
   remote_dir = "/home/${local.ssh_user}/.cache/project-roosevelt"
 
-  # kubeconfig path ON the control plane node
   kubeconfig_remote_path = "/home/${local.ssh_user}/kubeconfigs/${var.k8s_flavor}-${var.cluster_id}.yaml"
+  kubeconfig_local_path  = abspath("${path.module}/kubeconfigs/${var.k8s_flavor}-${var.cluster_id}.yaml")
 
-  # kubeconfig path ON the machine running tofu (sharin)
-  kubeconfig_local_path = abspath("${path.module}/kubeconfigs/${var.k8s_flavor}-${var.cluster_id}.yaml")
+  # --- Flavor script sources (local) ---
+  flavor_dir = "${path.module}/../../../scripts/flavors/${var.k8s_flavor}"
+
+  script_common_prep     = "${path.module}/../../../scripts/common_prep.sh"
+  script_kubelet_fix     = "${path.module}/../../../scripts/kubelet_fix.sh"
+  script_reset           = "${local.flavor_dir}/reset.sh"
+  script_install_server  = "${local.flavor_dir}/install_server.sh"
+  script_get_kubeconfig  = "${local.flavor_dir}/get_kubeconfig.sh"
+  script_get_join        = "${local.flavor_dir}/get_join.sh"
+  script_install_agent   = "${local.flavor_dir}/install_agent.sh"
+  script_wait_node_ready = "${local.flavor_dir}/wait_node_ready.sh"
 }
 
 # -------------------------
@@ -45,7 +51,6 @@ resource "null_resource" "controlplane" {
     private_key = local.ssh_private_key
   }
 
-  # 1) ensure staging dir exists (non-root path)
   provisioner "remote-exec" {
     inline = [
       "set -eu",
@@ -54,23 +59,36 @@ resource "null_resource" "controlplane" {
     ]
   }
 
-  # 2) copy scripts
+  # Copy common + flavor scripts
   provisioner "file" {
-    source      = "${path.module}/../../../scripts/common_prep.sh"
+    source      = local.script_common_prep
     destination = "${local.remote_dir}/common_prep.sh"
   }
-
   provisioner "file" {
-    source      = "${path.module}/../../../scripts/k3s_reset.sh"
-    destination = "${local.remote_dir}/k3s_reset.sh"
+    source      = local.script_kubelet_fix
+    destination = "${local.remote_dir}/kubelet_fix.sh"
+  }
+  provisioner "file" {
+    source      = local.script_reset
+    destination = "${local.remote_dir}/reset.sh"
+  }
+  provisioner "file" {
+    source      = local.script_install_server
+    destination = "${local.remote_dir}/install_server.sh"
+  }
+  provisioner "file" {
+    source      = local.script_get_kubeconfig
+    destination = "${local.remote_dir}/get_kubeconfig.sh"
+  }
+  provisioner "file" {
+    source      = local.script_get_join
+    destination = "${local.remote_dir}/get_join.sh"
+  }
+  provisioner "file" {
+    source      = local.script_wait_node_ready
+    destination = "${local.remote_dir}/wait_node_ready.sh"
   }
 
-  provisioner "file" {
-    source      = "${path.module}/../../../scripts/k3s_install_server.sh"
-    destination = "${local.remote_dir}/k3s_install_server.sh"
-  }
-
-  # 3) run scripts
   provisioner "remote-exec" {
     inline = concat(
       [
@@ -78,25 +96,20 @@ resource "null_resource" "controlplane" {
         "chmod +x ${local.remote_dir}/*.sh",
         "sudo bash ${local.remote_dir}/common_prep.sh",
       ],
-      var.k8s_flavor == "k3s" ? (
-        var.mode == "down" ? [
-          "sudo bash ${local.remote_dir}/k3s_reset.sh",
-        ] : [
-          "sudo bash ${local.remote_dir}/k3s_reset.sh",
-          "sudo mkdir -p $(dirname ${local.kubeconfig_remote_path})",
-          "sudo bash ${local.remote_dir}/k3s_install_server.sh '${local.cp.node_ip}' '${local.kubeconfig_remote_path}' '${local.ssh_user}'",
-        ]
-      ) : [
-        "echo 'Unsupported flavor for Day 1: ${var.k8s_flavor}'",
-        "exit 1",
+      var.mode == "down" ? [
+        "sudo bash ${local.remote_dir}/reset.sh",
+      ] : [
+        "sudo bash ${local.remote_dir}/reset.sh",
+        "sudo bash ${local.remote_dir}/install_server.sh '${local.cp.node_ip}'",
+        "sudo mkdir -p $(dirname ${local.kubeconfig_remote_path})",
+        "sudo bash ${local.remote_dir}/get_kubeconfig.sh '${local.kubeconfig_remote_path}' '${local.ssh_user}' '${local.cp.node_ip}'",
       ]
     )
   }
 }
 
 # -------------------------
-# Copy kubeconfig back to sharin
-# (so lab:status works locally even when CP is remote)
+# Copy kubeconfig back to local (sharin)
 # -------------------------
 resource "null_resource" "kubeconfig_local" {
   depends_on = [null_resource.controlplane]
@@ -122,8 +135,7 @@ EOT
 }
 
 # -------------------------
-# Workers (join/leave)
-# Token is fetched at runtime (apply-time) to avoid plan-time file() issues
+# Workers lifecycle
 # -------------------------
 resource "null_resource" "workers" {
   for_each   = local.workers
@@ -156,18 +168,20 @@ resource "null_resource" "workers" {
   }
 
   provisioner "file" {
-    source      = "${path.module}/../../../scripts/common_prep.sh"
+    source      = local.script_common_prep
     destination = "${local.remote_dir}/common_prep.sh"
   }
-
   provisioner "file" {
-    source      = "${path.module}/../../../scripts/k3s_reset.sh"
-    destination = "${local.remote_dir}/k3s_reset.sh"
+    source      = local.script_kubelet_fix
+    destination = "${local.remote_dir}/kubelet_fix.sh"
   }
-
   provisioner "file" {
-    source      = "${path.module}/../../../scripts/k3s_install_agent.sh"
-    destination = "${local.remote_dir}/k3s_install_agent.sh"
+    source      = local.script_reset
+    destination = "${local.remote_dir}/reset.sh"
+  }
+  provisioner "file" {
+    source      = local.script_install_agent
+    destination = "${local.remote_dir}/install_agent.sh"
   }
 
   provisioner "remote-exec" {
@@ -177,21 +191,13 @@ resource "null_resource" "workers" {
         "chmod +x ${local.remote_dir}/*.sh",
         "sudo bash ${local.remote_dir}/common_prep.sh",
       ],
-      var.k8s_flavor == "k3s" ? (
-        var.mode == "down" ? [
-          "sudo bash ${local.remote_dir}/k3s_reset.sh",
-        ] : [
-          "sudo bash ${local.remote_dir}/k3s_reset.sh",
-
-          # Fetch token from the control plane at apply-time
-          "TOKEN=$(ssh -i '${pathexpand(local.ssh_key_path)}' -o StrictHostKeyChecking=accept-new '${local.ssh_user}@${local.cp.host}' 'sudo cat /var/lib/rancher/k3s/server/node-token')",
-
-          # Join as agent
-          "sudo bash ${local.remote_dir}/k3s_install_agent.sh '${each.value.node_ip}' '${local.cp.node_ip}' \"$TOKEN\"",
-        ]
-      ) : [
-        "echo 'Unsupported flavor for workers Day 1: ${var.k8s_flavor}'",
-        "exit 1",
+      var.mode == "down" ? [
+        "sudo bash ${local.remote_dir}/reset.sh",
+      ] : [
+        "sudo bash ${local.remote_dir}/reset.sh",
+        "JOIN=$(ssh -i '${pathexpand(local.ssh_key_path)}' -o StrictHostKeyChecking=accept-new '${local.ssh_user}@${local.cp.host}' 'sudo bash ${local.remote_dir}/get_join.sh')",
+        "sudo bash ${local.remote_dir}/install_agent.sh '${each.value.node_ip}' '${local.cp.node_ip}' \"$JOIN\"",
+        "ssh -i '${pathexpand(local.ssh_key_path)}' -o StrictHostKeyChecking=accept-new '${local.ssh_user}@${local.cp.host}' 'sudo bash ${local.remote_dir}/wait_node_ready.sh ${each.value.node_ip} 300'",
       ]
     )
   }

@@ -15,3 +15,7 @@ sysctl --system
 
 apt-get update -y
 apt-get install -y curl jq socat conntrack iptables
+
+# If some previous run left /var/lib/kubelet mounted, unmount it.
+# This avoids cross-flavor poisoning.
+mountpoint -q /var/lib/kubelet && umount /var/lib/kubelet || true

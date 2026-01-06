@@ -3,7 +3,7 @@ set -euo pipefail
 
 NODE_IP="${1:?NODE_IP required}"
 CP_IP="${2:?CP_IP required}"
-TOKEN="${3:?TOKEN required}"
+TOKEN="${3:?JOIN_TOKEN required}"
 
 curl -sfL https://get.k3s.io | \
   K3S_URL="https://${CP_IP}:6443" \
