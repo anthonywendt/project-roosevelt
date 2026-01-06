@@ -12,6 +12,12 @@ tasks:
       - task: k3s-lab-up
       - task: full-bootstrap
 
+  - name: k0s-full
+    description: Bring up the k0s lab and build/deploy the bootstrap bundle
+    actions:
+      - task: k0s-lab-up
+      - task: full-bootstrap
+
   - name: k3s-lab-up
     description: Bring up the lab environment through k8s
     actions:
