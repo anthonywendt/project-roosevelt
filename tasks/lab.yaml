@@ -38,7 +38,7 @@ tasks:
           path: ${{ .inputs.path }}
       - cmd: |
           set -euo pipefail
-          TF_LOG=INFO tofu apply -auto-approve \
+          tofu apply -auto-approve \
             -var="k8s_flavor=${{ .inputs.k8s_flavor }}" \
             -var="cluster_id=${{ .inputs.cluster_id }}" \
             -var="inventory_file=${{ .inputs.inventory }}" \
