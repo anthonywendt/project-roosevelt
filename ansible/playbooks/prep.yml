@@ -1,0 +1,140 @@
+---
+- name: Roosevelt base OS prep
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    # Public key on *your laptop/dev box* (the machine running ansible)
+    roosevelt_pubkey_path: "{{ lookup('env', 'ROOSEVELT_PUBKEY') | default('~/.ssh/project_roosevelt_ed25519.pub', true) }}"
+    roosevelt_pubkey: "{{ lookup('file', roosevelt_pubkey_path) }}"
+
+    # Packages that make k8s flavors + debugging sane
+    roosevelt_packages:
+      - curl
+      - jq
+      - socat
+      - conntrack
+      - iproute2
+      - ca-certificates
+      - nftables
+      - iptables
+      - openssh-client
+      - rsync
+
+    # Sysctl content (match what you already use)
+    sysctl_k8s: |
+      net.bridge.bridge-nf-call-iptables=1
+      net.ipv4.ip_forward=1
+
+    sysctl_inotify: |
+      fs.inotify.max_user_instances=8192
+      fs.inotify.max_user_watches=1048576
+      fs.inotify.max_queued_events=65536
+
+  tasks:
+    - name: Ensure ubuntu user has passwordless sudo
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/99-ubuntu-nopasswd
+        content: |
+          ubuntu ALL=(ALL) NOPASSWD:ALL
+        owner: root
+        group: root
+        mode: '0440'
+
+    - name: Ensure apt cache is fresh
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages (this will apply your "66 updates")
+      ansible.builtin.apt:
+        upgrade: dist
+
+    - name: Install baseline packages
+      ansible.builtin.apt:
+        name: "{{ roosevelt_packages }}"
+        state: present
+
+    - name: Disable swap immediately (best-effort)
+      ansible.builtin.command: swapoff -a
+      changed_when: false
+      failed_when: false
+
+    - name: Comment swap entries in /etc/fstab (best-effort)
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^\s*([^#].*\s+swap\s+.*)$'
+        replace: '# \1'
+      failed_when: false
+
+    - name: Ensure kernel modules load at boot
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/roosevelt-k8s.conf
+        mode: "0644"
+        content: |
+          br_netfilter
+          overlay
+
+    - name: Load kernel modules now (best-effort)
+      ansible.builtin.shell: |
+        modprobe br_netfilter || true
+        modprobe overlay || true
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Write sysctl for k8s networking
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/99-k8s.conf
+        mode: "0644"
+        content: "{{ sysctl_k8s }}"
+
+    - name: Write sysctl for inotify stability (kubevirt-friendly)
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/98-kubevirt-inotify.conf
+        mode: "0644"
+        content: "{{ sysctl_inotify }}"
+
+    - name: Apply sysctls
+      ansible.builtin.command: sysctl --system
+      changed_when: false
+
+    # ---- iptables backend consistency (avoid nft/legacy split brain) ----
+    - name: Force iptables alternatives to legacy (if available)
+      ansible.builtin.shell: |
+        set -e
+        if command -v update-alternatives >/dev/null 2>&1; then
+          [ -x /usr/sbin/iptables-legacy ] && update-alternatives --set iptables /usr/sbin/iptables-legacy || true
+          [ -x /usr/sbin/ip6tables-legacy ] && update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy || true
+          [ -x /usr/sbin/arptables-legacy ] && update-alternatives --set arptables /usr/sbin/arptables-legacy || true
+          [ -x /usr/sbin/ebtables-legacy ] && update-alternatives --set ebtables /usr/sbin/ebtables-legacy || true
+        fi
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    # ---- SSH key / passwordless SSH enforcement ----
+    - name: Ensure ubuntu user has ~/.ssh directory
+      ansible.builtin.file:
+        path: /home/ubuntu/.ssh
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0700"
+
+    - name: Ensure project_roosevelt public key is in ubuntu authorized_keys
+      ansible.builtin.authorized_key:
+        user: ubuntu
+        key: "{{ roosevelt_pubkey }}"
+        state: present
+
+    - name: Show iptables version (debug)
+      ansible.builtin.command: iptables --version
+      register: iptver
+      changed_when: false
+
+    - name: Print iptables version
+      ansible.builtin.debug:
+        msg: "{{ iptver.stdout }}"

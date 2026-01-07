@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/maru-runner/main/tasks.schema.json
+tasks:
+  - name: prep
+    description: Prep nodes (updates, packages, sysctl, swapoff, ssh keys) using Ansible
+    actions:
+      - cmd: |
+          set -euo pipefail
+          cd ansible
+          ansible-playbook -i ./inventory.ini playbooks/prep.yml
+        shell:
+          linux: bash

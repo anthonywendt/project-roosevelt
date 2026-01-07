@@ -5,28 +5,28 @@
 ssh_user: ubuntu
 
 nodes:
-  - name: sharin
-    host: sharin
-    role: controlplane
-    node_ip: 192.168.69.10
-
-  # - name: peter1
-  #   host: 192.168.69.11
+  # - name: sharin
+  #   host: sharin
   #   role: controlplane
-  #   node_ip: 192.168.69.11
-  #   labels:
-  #     roosevelt.node: holland
+  #   node_ip: 192.168.69.10
 
-  # - name: peter2
-  #   host: 192.168.69.12
-  #   role: worker
-  #   node_ip: 192.168.69.12
-  #   labels:
-  #     roosevelt.node: maguire
+  - name: peter1
+    host: peter1
+    role: controlplane
+    node_ip: 192.168.69.11
+    labels:
+      roosevelt.node: holland
 
-  # - name: peter3
-  #   host: 192.168.69.13
-  #   role: worker
-  #   node_ip: 192.168.69.13
-  #   labels:
-  #     roosevelt.node: garfield
+  - name: peter2
+    host: peter2
+    role: worker
+    node_ip: 192.168.69.12
+    labels:
+      roosevelt.node: maguire
+
+  - name: peter3
+    host: peter3
+    role: worker
+    node_ip: 192.168.69.13
+    labels:
+      roosevelt.node: garfield

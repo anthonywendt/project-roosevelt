@@ -2,6 +2,7 @@
 includes:
   - create: ./tasks/create.yaml
   - deploy: ./tasks/deploy.yaml
+  - ansible: ./tasks/ansible.yaml
   - lab: ./tasks/lab.yaml
   - setup: https://raw.githubusercontent.com/defenseunicorns/uds-common/v1.22.0/tasks/setup.yaml
 
@@ -129,3 +130,8 @@ tasks:
           first_name: Anthony
           last_name: Wendt
           group: "UDS Core/Admin"
+
+  - name: ansible-prep
+    description: Run Ansible node prep against the current inventory/nodes.yaml
+    actions:
+      - task: ansible:prep
