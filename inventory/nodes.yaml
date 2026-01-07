@@ -6,7 +6,7 @@ ssh_user: ubuntu
 
 nodes:
   - name: sharin
-    host: 127.0.0.1
+    host: sharin
     role: controlplane
     node_ip: 192.168.69.10
 

@@ -5,6 +5,7 @@ log() { echo "[reset:k3s] $*"; }
 
 REMOTE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KUBELET_FIX="${REMOTE_DIR}/kubelet_fix.sh"  # TF copies it everywhere in your setup
+NET_RESET="${REMOTE_DIR}/network_reset.sh"
 
 umount_best_effort() {
   local target="$1"
@@ -20,6 +21,11 @@ systemctl stop k3s-agent 2>/dev/null || true
 
 # Give processes a moment to exit and release mounts
 sleep 2
+
+if [ -x "$NET_RESET" ]; then
+  log "Cleaning CNI/iptables state via network_reset.sh..."
+  bash "$NET_RESET" >/dev/null 2>&1 || true
+fi
 
 # If a previous k0s run left the bind-mount/fstab line around, remove it.
 if [ -x "$KUBELET_FIX" ]; then

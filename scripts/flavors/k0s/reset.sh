@@ -5,6 +5,7 @@ log() { echo "[reset:k0s] $*"; }
 
 REMOTE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KUBELET_FIX="${REMOTE_DIR}/kubelet_fix.sh"
+NET_RESET="${REMOTE_DIR}/network_reset.sh"
 
 umount_best_effort() {
   local target="$1"
@@ -26,6 +27,11 @@ fi
 
 # Give processes a moment to settle
 sleep 2
+
+if [ -x "$NET_RESET" ]; then
+  log "Cleaning CNI/iptables state via network_reset.sh..."
+  bash "$NET_RESET" >/dev/null 2>&1 || true
+fi
 
 # First: remove the bind-mount + fstab line (this prevents cross-flavor poisoning)
 if [ -x "$KUBELET_FIX" ]; then

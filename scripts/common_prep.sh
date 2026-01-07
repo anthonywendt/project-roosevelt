@@ -31,7 +31,7 @@ sysctl --system
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y curl jq socat conntrack iptables iproute2 ca-certificates
+apt-get install -y curl jq socat conntrack nftables iptables iproute2 ca-certificates
 
 # --- IMPORTANT: avoid nft/legacy split-brain ---
 # k3s/flannel + kube-proxy get weird when iptables backend flips between nft and legacy.

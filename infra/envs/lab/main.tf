@@ -22,6 +22,7 @@ locals {
 
   script_common_prep     = "${path.module}/../../../scripts/common_prep.sh"
   script_kubelet_fix     = "${path.module}/../../../scripts/kubelet_fix.sh"
+  script_network_reset   = "${path.module}/../../../scripts/network_reset.sh"
   script_reset           = "${local.flavor_dir}/reset.sh"
   script_install_server  = "${local.flavor_dir}/install_server.sh"
   script_get_kubeconfig  = "${local.flavor_dir}/get_kubeconfig.sh"
@@ -67,6 +68,10 @@ resource "null_resource" "controlplane" {
   provisioner "file" {
     source      = local.script_kubelet_fix
     destination = "${local.remote_dir}/kubelet_fix.sh"
+  }
+  provisioner "file" {
+    source      = local.script_network_reset
+    destination = "${local.remote_dir}/network_reset.sh"
   }
   provisioner "file" {
     source      = local.script_reset
@@ -174,6 +179,10 @@ resource "null_resource" "workers" {
   provisioner "file" {
     source      = local.script_kubelet_fix
     destination = "${local.remote_dir}/kubelet_fix.sh"
+  }
+  provisioner "file" {
+    source      = local.script_network_reset
+    destination = "${local.remote_dir}/network_reset.sh"
   }
   provisioner "file" {
     source      = local.script_reset
