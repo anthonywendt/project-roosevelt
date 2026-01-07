@@ -17,6 +17,10 @@ locals {
   kubeconfig_remote_path = "/home/${local.ssh_user}/kubeconfigs/${var.k8s_flavor}-${var.cluster_id}.yaml"
   kubeconfig_local_path  = abspath("${path.module}/kubeconfigs/${var.k8s_flavor}-${var.cluster_id}.yaml")
 
+  # Join token pulled to local machine (sharin)
+  join_token_local_path = abspath("${path.module}/.join_token_${var.k8s_flavor}_${var.cluster_id}")
+  join_token_remote_path = "${local.remote_dir}/.join_token_${var.k8s_flavor}_${var.cluster_id}"
+
   # --- Flavor script sources (local) ---
   flavor_dir = "${path.module}/../../../scripts/flavors/${var.k8s_flavor}"
 
@@ -114,6 +118,31 @@ resource "null_resource" "controlplane" {
 }
 
 # -------------------------
+# Fetch join token to local (sharin) once
+# -------------------------
+resource "null_resource" "join_token_local" {
+  depends_on = [null_resource.controlplane]
+
+  triggers = {
+    cluster_id = var.cluster_id
+    flavor     = var.k8s_flavor
+    mode       = var.mode
+    cp_host    = local.cp.host
+  }
+
+  provisioner "local-exec" {
+    command = var.mode == "down" ? "rm -f '${local.join_token_local_path}' || true" : <<EOT
+set -euo pipefail
+ssh -i '${pathexpand(local.ssh_key_path)}' -o StrictHostKeyChecking=accept-new \
+  '${local.ssh_user}@${local.cp.host}' \
+  'sudo bash ${local.remote_dir}/get_join.sh' > '${local.join_token_local_path}'
+chmod 600 '${local.join_token_local_path}'
+EOT
+    interpreter = ["/bin/bash", "-lc"]
+  }
+}
+
+# -------------------------
 # Copy kubeconfig back to local (sharin)
 # -------------------------
 resource "null_resource" "kubeconfig_local" {
@@ -142,9 +171,11 @@ EOT
 # -------------------------
 # Workers lifecycle
 # -------------------------
+
+# Workers UP (install + join)
 resource "null_resource" "workers" {
-  for_each   = local.workers
-  depends_on = [null_resource.controlplane]
+  for_each   = var.mode == "up" ? local.workers : {}
+  depends_on = [null_resource.controlplane, null_resource.join_token_local]
 
   triggers = {
     cluster_id = var.cluster_id
@@ -155,6 +186,77 @@ resource "null_resource" "workers" {
     host   = each.value.host
     nodeip = each.value.node_ip
     labels = jsonencode(try(each.value.labels, {}))
+  }
+
+  connection {
+    type        = "ssh"
+    host        = each.value.host
+    user        = local.ssh_user
+    private_key = local.ssh_private_key
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "set -eu",
+      "mkdir -p ${local.remote_dir}",
+      "chmod 755 ${local.remote_dir}",
+    ]
+  }
+
+  # Copy scripts needed for install
+  provisioner "file" {
+    source      = local.script_common_prep
+    destination = "${local.remote_dir}/common_prep.sh"
+  }
+  provisioner "file" {
+    source      = local.script_kubelet_fix
+    destination = "${local.remote_dir}/kubelet_fix.sh"
+  }
+  provisioner "file" {
+    source      = local.script_network_reset
+    destination = "${local.remote_dir}/network_reset.sh"
+  }
+  provisioner "file" {
+    source      = local.script_reset
+    destination = "${local.remote_dir}/reset.sh"
+  }
+  provisioner "file" {
+    source      = local.script_install_agent
+    destination = "${local.remote_dir}/install_agent.sh"
+  }
+  # Copy join token to the worker (so remote-exec can read it locally)
+  provisioner "file" {
+    source      = abspath("${path.module}/.join_token_${var.k8s_flavor}_${var.cluster_id}")
+    destination = "${local.remote_dir}/join_token"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "set -eu",
+      "chmod +x ${local.remote_dir}/*.sh",
+      "sudo bash ${local.remote_dir}/common_prep.sh",
+      "sudo bash ${local.remote_dir}/reset.sh",
+
+      # Read the join token locally (on sharin) and pass it directly
+      "TOKEN=$(cat '${local.remote_dir}/join_token')",
+      "sudo bash ${local.remote_dir}/install_agent.sh '${each.value.node_ip}' '${local.cp.node_ip}' \"$TOKEN\"",
+    ]
+  }
+}
+
+# Workers DOWN (reset only — no join token involved)
+resource "null_resource" "workers_down" {
+  for_each   = var.mode == "down" ? local.workers : {}
+  depends_on = [null_resource.controlplane]
+
+  triggers = {
+    cluster_id = var.cluster_id
+    flavor     = var.k8s_flavor
+    mode       = var.mode
+
+    name   = each.value.name
+    host   = each.value.host
+    nodeip = each.value.node_ip
   }
 
   connection {
@@ -188,26 +290,37 @@ resource "null_resource" "workers" {
     source      = local.script_reset
     destination = "${local.remote_dir}/reset.sh"
   }
-  provisioner "file" {
-    source      = local.script_install_agent
-    destination = "${local.remote_dir}/install_agent.sh"
-  }
 
   provisioner "remote-exec" {
-    inline = concat(
-      [
-        "set -eu",
-        "chmod +x ${local.remote_dir}/*.sh",
-        "sudo bash ${local.remote_dir}/common_prep.sh",
-      ],
-      var.mode == "down" ? [
-        "sudo bash ${local.remote_dir}/reset.sh",
-      ] : [
-        "sudo bash ${local.remote_dir}/reset.sh",
-        "JOIN=$(ssh -i '${pathexpand(local.ssh_key_path)}' -o StrictHostKeyChecking=accept-new '${local.ssh_user}@${local.cp.host}' 'sudo bash ${local.remote_dir}/get_join.sh')",
-        "sudo bash ${local.remote_dir}/install_agent.sh '${each.value.node_ip}' '${local.cp.node_ip}' \"$JOIN\"",
-        "ssh -i '${pathexpand(local.ssh_key_path)}' -o StrictHostKeyChecking=accept-new '${local.ssh_user}@${local.cp.host}' 'sudo bash ${local.remote_dir}/wait_node_ready.sh ${each.value.node_ip} 300'",
-      ]
-    )
+    inline = [
+      "set -eu",
+      "chmod +x ${local.remote_dir}/*.sh",
+      "sudo bash ${local.remote_dir}/common_prep.sh",
+      "sudo bash ${local.remote_dir}/reset.sh",
+    ]
+  }
+}
+
+# Wait for workers only when UP
+resource "null_resource" "wait_workers_ready" {
+  for_each   = var.mode == "up" ? local.workers : {}
+  depends_on = [null_resource.workers]
+
+  triggers = {
+    cluster_id = var.cluster_id
+    flavor     = var.k8s_flavor
+    mode       = var.mode
+    nodeip     = each.value.node_ip
+    cp_host    = local.cp.host
+  }
+
+  provisioner "local-exec" {
+    command = <<EOT
+set -euo pipefail
+ssh -i '${pathexpand(local.ssh_key_path)}' -o StrictHostKeyChecking=accept-new \
+  '${local.ssh_user}@${local.cp.host}' \
+  "sudo bash ${local.remote_dir}/wait_node_ready.sh ${each.value.node_ip} 300"
+EOT
+    interpreter = ["/bin/bash", "-lc"]
   }
 }

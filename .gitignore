@@ -4,6 +4,8 @@
 *.tfstate
 *.tfstate.*
 
+infra/envs/lab/.join_token_*
+
 # Kubeconfigs / outputs
 kubeconfig*
 kubeconfigs/
