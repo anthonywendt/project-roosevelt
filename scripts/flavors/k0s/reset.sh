@@ -10,38 +10,60 @@ NET_RESET="${REMOTE_DIR}/network_reset.sh"
 umount_best_effort() {
   local target="$1"
   if mountpoint -q "$target" 2>/dev/null; then
+    # Recursive + lazy handles common "busy" cases
     umount -R -l "$target" 2>/dev/null || umount -l "$target" 2>/dev/null || umount "$target" 2>/dev/null || true
   fi
 }
 
+stop_unit() {
+  local unit="$1"
+  systemctl stop "$unit" 2>/dev/null || true
+}
+
 disable_and_remove_unit() {
   local unit="$1"
-  systemctl stop "${unit%.service}" 2>/dev/null || true
-  systemctl stop "$unit" 2>/dev/null || true
+  stop_unit "$unit"
   systemctl disable "$unit" 2>/dev/null || true
   rm -f "/etc/systemd/system/${unit}" "/lib/systemd/system/${unit}" "/usr/lib/systemd/system/${unit}" 2>/dev/null || true
 }
 
-log "Stopping k0s services (if present)..."
-systemctl stop k0sworker 2>/dev/null || true
-systemctl stop k0scontroller 2>/dev/null || true
-systemctl stop k0scontainerd 2>/dev/null || true
+kill_leftovers() {
+  log "Killing leftover k0s/containerd/kubelet processes (best-effort)..."
+  # Stop kubelet if it exists (k0s uses its own kubelet binary under /var/lib/k0s/bin)
+  pkill -f "/var/lib/k0s/bin/kubelet" 2>/dev/null || true
 
-# Best-effort stop via k0s
+  # containerd + shims started by k0s
+  pkill -f "/run/k0s/containerd.sock" 2>/dev/null || true
+  pkill -f "/var/lib/k0s/bin/containerd" 2>/dev/null || true
+  pkill -f "containerd-shim-runc-v2.*-address /run/k0s/containerd.sock" 2>/dev/null || true
+  pkill -f "io.containerd.runtime.v2.task/k8s.io" 2>/dev/null || true
+
+  # give the kernel a moment to release mounts
+  sleep 2
+}
+
+remove_leftover_cni_links() {
+  log "Removing leftover CNI interfaces (best-effort)..."
+  # k0s/kube-router commonly uses kube-bridge; other CNIs can leave these
+  for link in kube-bridge cni0 flannel.1 cali0 vxlan.calico; do
+    if ip link show "$link" >/dev/null 2>&1; then
+      ip link del "$link" >/dev/null 2>&1 || true
+    fi
+  done
+}
+
+log "Stopping k0s services (if present)..."
+stop_unit k0sworker.service
+stop_unit k0scontroller.service
+stop_unit k0scontainerd.service
+
+# Best-effort stop via k0s (if installed)
 if command -v k0s >/dev/null 2>&1; then
   k0s stop >/dev/null 2>&1 || true
 fi
 
-# Give processes a moment to settle
 sleep 2
-
-# Kill any leftover k0s/containerd shims that keep /run/k0s busy
-log "Killing leftover k0s/containerd shim processes (best-effort)..."
-pkill -f "/run/k0s/containerd.sock" 2>/dev/null || true
-pkill -f "/var/lib/k0s/bin/containerd-shim" 2>/dev/null || true
-pkill -f "io.containerd.runtime.v2.task/k8s.io" 2>/dev/null || true
-
-sleep 1
+kill_leftovers
 
 # Clean CNI/iptables (best-effort)
 if [ -x "$NET_RESET" ]; then
@@ -70,7 +92,10 @@ umount_best_effort /run/k0s/containerd
 umount_best_effort /run/k0s
 umount_best_effort /var/lib/k0s
 
-# Remove token file (worker uses it at boot, so reset must remove it)
+# Sometimes the bridge persists even after kube-router is gone
+remove_leftover_cni_links
+
+# Remove token file (worker service may reference it)
 rm -f /etc/k0s/k0s.token 2>/dev/null || true
 
 # Remove systemd units so install doesn't fail with "Init already exists"
@@ -82,8 +107,9 @@ disable_and_remove_unit "k0scontainerd.service"
 systemctl daemon-reload 2>/dev/null || true
 systemctl reset-failed 2>/dev/null || true
 
+# Remove all k0s state dirs (THIS was missing in your current script)
 log "Removing k0s state directories..."
-rm -f /etc/k0s/k0s.token /etc/k0s/k0s.token 2>/dev/null || true
+rm -rf /var/lib/k0s /etc/k0s /run/k0s 2>/dev/null || true
 
 log "Removing k0s binary (optional clean slate)..."
 rm -f /usr/local/bin/k0s || true

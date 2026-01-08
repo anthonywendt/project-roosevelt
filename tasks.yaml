@@ -7,20 +7,11 @@ includes:
   - setup: https://raw.githubusercontent.com/defenseunicorns/uds-common/v1.22.0/tasks/setup.yaml
 
 tasks:
-  - name: k3s-full
-    description: Bring up the k3s lab and build/deploy the bootstrap bundle
-    actions:
-      - task: k3s-lab-up
-      - task: full-bootstrap
-
-  - name: k0s-full
-    description: Bring up the k0s lab and build/deploy the bootstrap bundle
-    actions:
-      - task: k0s-lab-up
-      - task: full-bootstrap
-
+####
+#### Lab Environment k8s Management tasks ####
+####
   - name: k3s-lab-up
-    description: Bring up the lab environment through k8s
+    description: Stand up k3s cluster in lab environment
     actions:
       - task: lab:apply
         with:
@@ -37,12 +28,40 @@ tasks:
           path: infra/envs/lab
 
   - name: k3s-lab-down
-    description: Bring down the lab environment through k8s
+    description: Tear down k3s cluster in lab environment
     actions:
       - task: lab:apply
         with:
           path: infra/envs/lab
           k8s_flavor: k3s
+          cluster_id: lab-001
+          inventory: inventory/nodes.yaml
+          mode: down
+
+  - name: k0s-lab-up
+    description: Stand up k0s cluster in lab environment
+    actions:
+      - task: lab:apply
+        with:
+          path: infra/envs/lab
+          k8s_flavor: k0s
+          cluster_id: lab-001
+          inventory: inventory/nodes.yaml
+          mode: up
+      - task: lab:status
+        with:
+          path: infra/envs/lab
+      - task: lab:kubeconfig
+        with:
+          path: infra/envs/lab
+
+  - name: k0s-lab-down
+    description: Tear down k0s cluster in lab environment
+    actions:
+      - task: lab:apply
+        with:
+          path: infra/envs/lab
+          k8s_flavor: k0s
           cluster_id: lab-001
           inventory: inventory/nodes.yaml
           mode: down
@@ -61,34 +80,9 @@ tasks:
         with:
           path: infra/envs/lab
 
-  - name: k0s-lab-up
-    description: Bring up the k0s lab environment through k8s
-    actions:
-      - task: lab:apply
-        with:
-          path: infra/envs/lab
-          k8s_flavor: k0s
-          cluster_id: lab-001
-          inventory: inventory/nodes.yaml
-          mode: up
-      - task: lab:status
-        with:
-          path: infra/envs/lab
-      - task: lab:kubeconfig
-        with:
-          path: infra/envs/lab
-
-  - name: k0s-lab-down
-    description: Bring down the k0s lab environment through k8s
-    actions:
-      - task: lab:apply
-        with:
-          path: infra/envs/lab
-          k8s_flavor: k0s
-          cluster_id: lab-001
-          inventory: inventory/nodes.yaml
-          mode: down
-
+####
+#### UDS package and bundle tasks ####
+####
   - name: full-bootstrap
     description: Create and deploy the bootstrap bundle, then create a Keycloak user
     actions:
@@ -131,7 +125,10 @@ tasks:
           last_name: Wendt
           group: "UDS Core/Admin"
 
+####
+#### Ansible tasks to prep fresh ubuntu nodes ####
+####
   - name: ansible-prep
-    description: Run Ansible node prep against the current inventory/nodes.yaml
+    description: Run Ansible node prep against the current ansible/inventory.ini to prep fresh ubuntu nodes
     actions:
       - task: ansible:prep
