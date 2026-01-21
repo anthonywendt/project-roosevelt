@@ -132,3 +132,32 @@ tasks:
     description: Run Ansible node prep against the current ansible/inventory.ini to prep fresh ubuntu nodes
     actions:
       - task: ansible:prep
+
+####
+#### Tinkerbell things ####
+####
+  - name: create-tinkerbell-bundle
+    description: Create the tinkerbell package and bundle
+    actions:
+      - task: create:package
+        with:
+          path: packages/tinkerbell-package
+          architecture: amd64
+          options: "--flavor upstream"
+      - task: create:bundle
+        with:
+          path: bundles/tinkerbell-bundle
+          architecture: amd64
+
+  - name: deploy-tinkerbell-bundle
+    description: Deploy the tinkerbell bundle to the cluster
+    inputs:
+      config_file_name:
+        description: File name relative to the value of the path input var to use for the uds-config file
+        default: uds-config.yaml
+    actions:
+      - task: deploy:deploy-bundle
+        with:
+          path: bundles/tinkerbell-bundle
+          config_file_name: ${{ .inputs.config_file_name }}
+          architecture: amd64

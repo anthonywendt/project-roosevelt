@@ -1,0 +1,27 @@
+# Copyright 2024 Defense Unicorns
+# SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Defense-Unicorns-Commercial
+
+# Values for upstream flavor
+
+# Example variables from UDS package repo template. Update to relevant variables after templating
+# image:
+#   repository: upstream/image
+#   tag: 1.2.3
+deployment:
+  agentImage: ghcr.io/tinkerbell/tink-agent
+  agentImageTag: v0.21.0
+  image: ghcr.io/tinkerbell/tinkerbell
+  imagePullPolicy: IfNotPresent
+  imageTag: v0.21.0
+  init:
+    # if `interfaceMode: ipvlan`, then ghcr.io/jacobweinstock/relay-init:v0.1.0 (has nmap and nmap-scripts) is required. Otherwise, alpine can be used. 
+    image: ghcr.io/jacobweinstock/relay-init:v0.1.0
+
+optional:
+  hookos:
+    image: nginx:1.27.2
+    scriptImage: bash:5.2.37
+
+  kubevip:
+    image: ghcr.io/kube-vip/kube-vip:v0.9.1
+    imagePullPolicy: IfNotPresent

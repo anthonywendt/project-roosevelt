@@ -143,3 +143,6 @@ deploy-bootstrap-bundle | Deploy the bootstrap bundle to the cluster
 create-keycloak-user    | Add a new keycloak user to the cluster for testing purposes                               
 ansible-prep            | Run Ansible node prep against the current ansible/inventory.ini to prep fresh ubuntu nodes 
 ```
+
+## Added Tinkerbell example
+Just added the package from another place. I can deploy tinkerbell to a cluster on sharin and then netboot any peter server into hookos. Haven't integrated with it fully but might play with it more later.

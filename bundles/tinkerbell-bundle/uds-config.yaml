@@ -1,0 +1,7 @@
+variables:
+  tinkerbell:
+    PUBLIC_IP: 192.168.69.215
+    FILE_SERVER_URL: http://192.168.69.216:7173
+  tinkerbell-resources:
+    BMC_USERNAME: tinkerbell
+    BMC_PASSWORD: Diminish-Sycamore2-Unwieldy

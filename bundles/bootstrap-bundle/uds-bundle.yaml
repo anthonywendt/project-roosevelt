@@ -35,6 +35,9 @@ packages:
             - path: admission.livenessProbe
               value:
                 initialDelaySeconds: 60
+            - path: additionalIgnoredNamespaces
+              value:
+                - tinkerbell
           variables:
             - name: PEPR_WATCHER_MEMORY_REQUEST
               description: "Memory requests for the pepr watcher pod"

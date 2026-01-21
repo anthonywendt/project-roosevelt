@@ -1,0 +1,60 @@
+apiVersion: v1
+type: kubernetes.io/basic-auth
+stringData:
+  password: {{ .Values.bmc_password }}
+  username: {{ .Values.bmc_username }}
+kind: Secret
+metadata:
+  name: bm-auth
+  namespace: tinkerbell
+---
+apiVersion: bmc.tinkerbell.org/v1alpha1
+kind: Machine
+metadata:
+  name: peter1-bmc
+  namespace: tinkerbell
+spec:
+  connection:
+    authSecretRef:
+      name: bm-auth
+      namespace: tinkerbell
+    host: 10.10.10.10
+    insecureTLS: true
+    port: 443
+    providerOptions:
+      redfish:
+        port: 443
+---
+apiVersion: bmc.tinkerbell.org/v1alpha1
+kind: Machine
+metadata:
+  name: peter2-bmc
+  namespace: tinkerbell
+spec:
+  connection:
+    authSecretRef:
+      name: bm-auth
+      namespace: tinkerbell
+    host: 10.10.10.10
+    insecureTLS: true
+    port: 443
+    providerOptions:
+      redfish:
+        port: 443
+---
+apiVersion: bmc.tinkerbell.org/v1alpha1
+kind: Machine
+metadata:
+  name: peter3-bmc
+  namespace: tinkerbell
+spec:
+  connection:
+    authSecretRef:
+      name: bm-auth
+      namespace: tinkerbell
+    host: 10.10.10.10
+    insecureTLS: true
+    port: 443
+    providerOptions:
+      redfish:
+        port: 443

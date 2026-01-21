@@ -1,0 +1,32 @@
+# Copyright 2024 Defense Unicorns
+# SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Defense-Unicorns-Commercial
+{{- if and (.Capabilities.APIVersions.Has "uds.dev/v1alpha1") .Values.udsEnabled }}
+apiVersion: uds.dev/v1alpha1
+kind: Package
+metadata:
+  name: tinkerbell
+  namespace: {{ .Release.Namespace }}
+spec:
+  # Customize network policies and expose services via istio
+  network:
+    serviceMesh:
+      mode: ambient
+    # expose:
+    #   - service: tinkerbell
+    #     podLabels:
+    #       app: tinkerbell
+    #     gateway: tenant
+    #     host: tinkerbell
+    #     port: 1234
+    allow:
+      - direction: Ingress
+        remoteGenerated: Anywhere
+
+      - direction: Egress
+        remoteGenerated: Anywhere
+
+      # Custom rules for unanticipated scenarios
+      {{- with .Values.additionalNetworkAllow }}
+      {{ toYaml . | nindent 6 }}
+      {{- end }}
+{{- end }}

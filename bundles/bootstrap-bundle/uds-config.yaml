@@ -3,4 +3,5 @@
 
 variables:
   metallb:
-    IP_ADDRESS_POOL: 192.168.69.200-192.168.69.210
+    IP_ADDRESS_POOL: 192.168.69.200-192.168.69.220
+

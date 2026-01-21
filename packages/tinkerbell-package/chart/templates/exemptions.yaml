@@ -1,0 +1,22 @@
+
+{{- if and (.Capabilities.APIVersions.Has "uds.dev/v1alpha1") .Values.exemptionEnabled }}
+apiVersion: uds.dev/v1alpha1
+kind: Exemption
+metadata:
+  name: tinkerbell-exemptions
+  namespace: uds-policy-exemptions
+spec:
+  exemptions:
+    - policies:
+        - RequireNonRootUser
+        - DisallowPrivileged
+        - DropAllCapabilities
+        - DisallowHostNamespaces
+        - RestrictCapabilities
+      matcher:
+        namespace: tinkerbell
+        name: ".*"
+        kind: pod
+      title: "tinkerbell exemptions"
+      description: "exemptions needed for tinkerbell to work"
+{{- end }}

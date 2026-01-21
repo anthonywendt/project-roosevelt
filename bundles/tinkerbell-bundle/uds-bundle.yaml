@@ -1,0 +1,48 @@
+kind: UDSBundle
+metadata:
+  name: tinkerbell
+  description: A UDS bundle for deploying UDS Registry and Tinkerbell
+  version: "0.0.1"
+
+packages:
+  # - name: registry
+  #   repository: ghcr.io/defenseunicorns/packages/private/uds/uds-registry
+  #   ref: 0.24.0-unicorn
+  #   overrides:
+  #     uds-registry:
+  #       uds-registry:
+  #         values:
+  #           - path: resources.limits
+  #             value:
+  #               cpu: "2.0"
+  #               memory: "2Gi"
+  #           - path: replicaCount
+  #             value: 1
+  #           - path: registry.features.genericOCI
+  #             value: true
+  #           - path: registry.auth.access.admins
+  #             value:
+  #               - jacob.may@defenseunicorns.com
+
+  - name: tinkerbell
+    path: ../../packages/tinkerbell-package/
+    flavor: upstream
+    ref: dev
+    overrides:
+      tinkerbell:
+        tinkerbell:
+          values:
+            - path: trustedProxies
+              value: 10.42.0.0/24
+          variables:
+            - name: PUBLIC_IP
+              path: publicIP
+            - name: FILE_SERVER_URL
+              path: artifactsFileServer
+      tinkerbell-resources:
+        tinkerbell-resources:
+          variables:
+            - name: BMC_USERNAME
+              path: bmc_username
+            - name: BMC_PASSWORD
+              path: bmc_password

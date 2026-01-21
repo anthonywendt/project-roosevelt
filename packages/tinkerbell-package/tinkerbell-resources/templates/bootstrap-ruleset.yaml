@@ -1,0 +1,17 @@
+apiVersion: tinkerbell.org/v1alpha1
+kind: WorkflowRuleSet
+metadata:
+  name: bootstrap-ruleset
+  namespace: tinkerbell
+  labels:
+    server-name: peter3
+spec:
+  rules:
+  - '{"networkInterfaces": {"mac": [{"equals-ignore-case": "9c:2d:cd:5f:b0:16"}]}}'
+  workflow:
+    addAttributes: true
+    disabled: true
+    namespace: tinkerbell
+    template:
+      agentValue: worker_id
+      ref: bootstrap-uds-os

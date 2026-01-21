@@ -1,0 +1,9 @@
+{
+  "name": "uds-package-tinkerbell",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@playwright/test": "1.56.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.4.5"
+  }
+}

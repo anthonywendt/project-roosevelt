@@ -1,0 +1,176 @@
+apiVersion: tinkerbell.org/v1alpha1
+kind: Template
+metadata:
+  name: bootstrap-uds-os-old
+  namespace: tinkerbell
+spec:
+  data: |
+    name: bootstrap-uds-os-old
+    version: "0.1"
+    global_timeout: 9800
+    tasks:
+      - name: "os installation"
+        worker: {{`"{{.worker_id}}"`}}
+        volumes:
+          - /dev:/dev
+          - /dev/console:/dev/console
+          - /lib/firmware:/lib/firmware:ro
+        environment:
+          GLOBAL_VALUE: "my global value"
+        actions:
+          - name: "stream image"
+            image: quay.io/tinkerbell/actions/oci2disk:latest
+            timeout: 9600
+            environment:
+              DEST_DISK: {{`{{ index .Hardware.Disks 0 }}`}}
+              IMG_URL: "us-central1-docker.pkg.dev/eddiezane-playground/canes-hw-lab/uds-os-bootable:40g.gz"
+              COMPRESSED: true
+          - name: "add cloud-init config"
+            image: quay.io/tinkerbell/actions/writefile:latest
+            timeout: 90
+            environment:
+              CONTENTS: |
+                #cloud-config
+                debug: true
+                hostname: {{ printf "uds-edge-os-{{`{{ trunc 4 .MachineID }}`}}" }}
+                # TODO: initial auth - https://github.com/defenseunicorns/uds-edge-os/issues/50
+                users:
+                  - name: uds
+                    passwd: $6$R96torUQvXuKYbqb$mKg0b/BngVnfjiXcp89hszhu7BgQV4btLGlf9XW0i.rrrfX4kIGZ17GsLSK1OEnyH7LLtwP4Gm6sy34hl20re1
+                    groups: ["admin"]
+                    # TODO: initial auth - https://github.com/defenseunicorns/uds-edge-os/issues/50
+                    ssh_authorized_keys:
+                      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICOSDVzhukBpcGr0k/S6A6KlatLg3wactdkV8RnBAlkS canes@defenseunicorns.com
+                chpasswd:
+                  list: "uds:unicorn123!@#UN"
+                  expire: true
+
+                write_files:
+                  - path: /etc/uds/bootstrap.env
+                    permissions: 0644
+                    content: |
+                      # Common UDS variables
+                      UDS_LOG_LEVEL="debug"
+                      UDS_NO_PROGRESS="true"
+
+                      # Common Kubernetes variables
+                      KUBECONFIG=/etc/uds-remote-agent/kubeconfig
+
+                      # TODO: once we have UDS Core we will want to ensure all variables are set
+                      IP_ADDRESS_ADMIN_INGRESSGATEWAY=10.10.101.21
+                      IP_ADDRESS_TENANT_INGRESSGATEWAY=10.10.101.22
+                  - path: /etc/k0s/k0s.yaml
+                    permissions: 0744
+                    content: |
+                      apiVersion: k0s.k0sproject.io/v1beta1
+                      kind: Cluster
+                      metadata:
+                        name: k0s
+                      spec:
+                        network:
+                          nodeLocalLoadBalancing:
+                            enabled: true
+                            type: EnvoyProxy
+
+                k0s:
+                  args:
+                    - --enable-worker --no-taints
+                  enabled: true
+
+                install:
+                  device: auto
+                  reboot: true
+                  grub-entry-name: UDS Edge OS
+                  auto: true
+
+                reset:
+                  grub-entry-name: UDS Edge OS Reset
+                upgrade:
+                  grub-entry-name: UDS Edge OS Upgrade
+                  # Upgrade sizing increase to account for UDS Core
+                  system:
+                    size: 4680
+                  passive:
+                    size: 4680
+
+                stages:
+                  network.before:
+                    - name: Setup Dummy Network
+                      files:
+                        - path: /tmp/nmstate.yaml
+                          permissions: 0600
+                          content: |
+                            interfaces:
+                              - name: {{ printf "{{`{{with index .Values.network 0}}{{.name}}{{end}}`}}" }}
+                                type: ethernet
+                                state: up
+                                ipv4:
+                                  enabled: true
+                                  dhcp: true
+                                ipv6:
+                                  enabled: false
+                              - name: dummy0
+                                type: dummy
+                                state: up
+                                ipv4:
+                                  enabled: true
+                                  address:
+                                    - ip: 203.0.113.254
+                                      prefix-length: 31
+                                  dhcp: false
+                                  auto-dns: false
+                                  auto-routes: false
+                                  auto-gateway: false
+                                ipv6:
+                                  enabled: false
+                            routes:
+                              config:
+                                - destination: 0.0.0.0/0
+                                  next-hop-address: 203.0.113.254
+                                  next-hop-interface: dummy0
+                                  metric: 1000
+
+                    - name: Configure NetworkManager's dnsmasq for the UDS Core domain
+                      files:
+                        - path: /etc/NetworkManager/conf.d/dns.conf
+                          content: |
+                            [main]
+                            dns=dnsmasq
+                        - path: /etc/NetworkManager/dnsmasq.d/00-main-dns.conf
+                          content: |
+                            # Dummy `if` IP address
+                            listen-address=203.0.113.254
+                            server=1.1.1.1
+                        - path: /etc/NetworkManager/dnsmasq.d/01-uds-dev.conf
+                          content: |
+                            address=/.admin.uds.dev/10.10.101.21
+                            address=/.uds.dev/10.10.101.22
+                        - path: /run/systemd/resolve/resolv.conf
+                          content: |
+                            # Generated by NetworkManager
+                            nameserver 203.0.113.254
+                            options edns0 trust-ad
+                      commands:
+                        - systemctl restart NetworkManager
+
+                    - name: Apply network configuration
+                      commands:
+                        - echo "network.before test" > /tmp/network.before.log
+                        - nmstatectl apply /tmp/nmstate.yaml
+              DEST_DISK: {{`{{ formatPartition ( index .Hardware.Disks 0 ) 2 }}`}}
+              DEST_PATH: /90_custom.yaml
+              DIRMODE: "0700"
+              FS_TYPE: ext4
+              GID: "0"
+              MODE: "0600"
+              UID: "0"
+          - name: "reboot"
+            image: ghcr.io/jacobweinstock/waitdaemon:latest
+            timeout: 90
+            pid: host
+            command: ["reboot"]
+            environment:
+              IMAGE: alpine
+              WAIT_SECONDS: 10
+            volumes:
+              - /var/run/docker.sock:/var/run/docker.sock

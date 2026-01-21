@@ -1,0 +1,29 @@
+# Copyright 2024 Defense Unicorns
+# SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Defense-Unicorns-Commercial
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/zarf/main/zarf.schema.json
+kind: ZarfPackageConfig
+metadata:
+  name: tinkerbell-common
+  description: "UDS Tinkerbell Common Package"
+
+components:
+  - name: tinkerbell
+    required: true
+    charts:
+      - name: uds-tinkerbell-config
+        namespace: tinkerbell
+        version: 0.1.0
+        localPath: ../chart
+        actions:
+          onDeploy:
+            after:
+              - description: Disable Istio on Tinkerbell NS
+                cmd: kubectl label namespace tinkerbell istio-injection=disabled --overwrite
+              - cmd: kubectl label namespace tinkerbell istio.io/dataplane-mode=none --overwrite
+      - name: tinkerbell
+        namespace: tinkerbell
+        url: oci://ghcr.io/tinkerbell/charts/tinkerbell
+        version: v0.21.0
+        valuesFiles:
+          - ../values/common-values.yaml

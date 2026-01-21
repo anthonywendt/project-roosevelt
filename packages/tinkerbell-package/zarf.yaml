@@ -1,0 +1,76 @@
+# Copyright 2024 Defense Unicorns
+# SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Defense-Unicorns-Commercial
+
+# yaml-language-server: $schema=https://raw.githubusercontent.com/defenseunicorns/zarf/main/zarf.schema.json
+kind: ZarfPackageConfig
+metadata:
+  name: tinkerbell
+  description: "UDS Tinkerbell package"
+  version: "dev"
+  annotations:
+    dev.uds.title: Tinkerbell
+    dev.uds.tagline: ""
+    dev.uds.categories: ""
+    dev.uds.keywords: ""
+    dev.uds.icon: ""
+
+variables:
+  - name: DOMAIN
+    default: "uds.dev"
+
+components:
+  - name: tinkerbell
+    required: true
+    description: "Deploy Tinkerbell"
+    import:
+      path: common
+    only:
+      flavor: upstream
+    charts:
+      - name: tinkerbell
+        valuesFiles:
+          - values/upstream-values.yaml
+    images:
+      - ghcr.io/tinkerbell/tink-agent:v0.21.0
+      - ghcr.io/tinkerbell/tinkerbell:v0.21.0
+      - ghcr.io/jacobweinstock/relay-init:v0.1.0
+      - nginx:1.27.2
+      - bash:5.2.37
+      - ghcr.io/kube-vip/kube-vip:v0.9.1
+
+  - name: tinkerbell-resources
+    required: true
+    description: "Tinkerbell custom resources for provisioning environment"
+    charts:
+      - name: tinkerbell-resources
+        namespace: tinkerbell
+        version: 0.1.0
+        localPath: tinkerbell-resources
+
+  # - name: tinkerbell
+  #   required: true
+  #   description: "Deploy Tinkerbell"
+  #   import:
+  #     path: common
+  #   only:
+  #     flavor: registry1
+  #     cluster:
+  #       architecture: amd64
+  #   charts:
+  #     - name: tinkerbell
+  #       valuesFiles:
+  #         - values/registry1-values.yaml
+  #   images: []
+
+  # - name: tinkerbell
+  #   required: true
+  #   description: "Deploy Tinkerbell"
+  #   import:
+  #     path: common
+  #   only:
+  #     flavor: unicorn
+  #   charts:
+  #     - name: tinkerbell
+  #       valuesFiles:
+  #         - values/unicorn-values.yaml
+  #   images: []

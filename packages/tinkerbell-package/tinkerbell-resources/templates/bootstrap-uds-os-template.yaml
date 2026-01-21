@@ -1,0 +1,37 @@
+apiVersion: tinkerbell.org/v1alpha1
+kind: Template
+metadata:
+  name: bootstrap-uds-os
+  namespace: tinkerbell
+spec:
+  data: |
+    name: bootstrap-uds-os
+    version: "0.1"
+    global_timeout: 9800
+    tasks:
+      - name: "os installation"
+        worker: {{`"{{.worker_id}}"`}}
+        volumes:
+          - /dev:/dev
+          - /dev/console:/dev/console
+          - /lib/firmware:/lib/firmware:ro
+        environment:
+          GLOBAL_VALUE: "my global value"
+        actions:
+          - name: "stream image"
+            image: quay.io/tinkerbell/actions/oci2disk:latest
+            timeout: 9600
+            environment:
+              DEST_DISK: {{`{{ index .Hardware.Disks 0 }}`}}
+              IMG_URL: "us-central1-docker.pkg.dev/eddiezane-playground/canes-hw-lab/uds-os-bootable:demo-40g.gz"
+              COMPRESSED: true
+          - name: "reboot"
+            image: ghcr.io/jacobweinstock/waitdaemon:latest
+            timeout: 90
+            pid: host
+            command: ["reboot"]
+            environment:
+              IMAGE: alpine
+              WAIT_SECONDS: 10
+            volumes:
+              - /var/run/docker.sock:/var/run/docker.sock

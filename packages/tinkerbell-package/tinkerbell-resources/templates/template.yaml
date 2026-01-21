@@ -1,0 +1,115 @@
+apiVersion: tinkerbell.org/v1alpha1
+kind: Template
+metadata:
+  name: ubuntu
+  namespace: tinkerbell
+spec:
+  data: |
+    name: ubuntu
+    version: "0.1"
+    global_timeout: 9800
+    tasks:
+      - name: "os installation"
+        worker: {{`"{{.worker_id}}"`}}
+        volumes:
+          - /dev:/dev
+          - /dev/console:/dev/console
+          - /lib/firmware:/lib/firmware:ro
+        environment:
+          GLOBAL_VALUE: "my global value"
+        actions:
+          - name: "stream image"
+            image: quay.io/tinkerbell/actions/oci2disk:latest
+            timeout: 9600
+            environment:
+              DEST_DISK: {{`{{ index .Hardware.Disks 0 }}`}}
+              IMG_URL: "us-central1-docker.pkg.dev/eddiezane-playground/canes-hw-lab/jammy-server-cloudimg-amd64:22.04"
+              COMPRESSED: false
+          - name: "grow-partition"
+            image: quay.io/tinkerbell/actions/cexec:latest
+            timeout: 90
+            environment:
+              BLOCK_DEVICE: {{`{{ index .Hardware.Disks 0 }}1`}}
+              FS_TYPE: ext4
+              CHROOT: y
+              DEFAULT_INTERPRETER: "/bin/sh -c"
+              CMD_LINE: {{`"growpart {{ index .Hardware.Disks 0 }} 1 && resize2fs {{ index .Hardware.Disks 0 }}1"`}}
+          - name: "install openssl"
+            image: quay.io/tinkerbell/actions/cexec:latest
+            timeout: 90
+            environment:
+              BLOCK_DEVICE: {{`{{ index .Hardware.Disks 0 }}1`}}
+              FS_TYPE: ext4
+              CHROOT: y
+              DEFAULT_INTERPRETER: "/bin/sh -c"
+              CMD_LINE: "apt -y update && apt -y install openssl"
+          - name: "create user"
+            image: quay.io/tinkerbell/actions/cexec:latest
+            timeout: 90
+            environment:
+              BLOCK_DEVICE: {{`{{ index .Hardware.Disks 0 }}1`}}
+              FS_TYPE: ext4
+              CHROOT: y
+              DEFAULT_INTERPRETER: "/bin/sh -c"
+              CMD_LINE: "useradd -p $(openssl passwd -1 tink) -s /bin/bash -d /home/tink/ -m -G sudo tink"
+          - name: "enable ssh"
+            image: quay.io/tinkerbell/actions/cexec:latest
+            timeout: 90
+            environment:
+              BLOCK_DEVICE: {{`{{ index .Hardware.Disks 0 }}1`}}
+              FS_TYPE: ext4
+              CHROOT: y
+              DEFAULT_INTERPRETER: "/bin/sh -c"
+              CMD_LINE: "ssh-keygen -A; systemctl enable ssh.service; echo 'PasswordAuthentication yes' > /etc/ssh/sshd_config.d/60-cloudimg-settings.conf"
+          - name: "disable apparmor"
+            image: quay.io/tinkerbell/actions/cexec:latest
+            timeout: 90
+            environment:
+              BLOCK_DEVICE: {{`{{ index .Hardware.Disks 0 }}1`}}
+              FS_TYPE: ext4
+              CHROOT: y
+              DEFAULT_INTERPRETER: "/bin/sh -c"
+              CMD_LINE: "systemctl disable apparmor; systemctl disable snapd"
+          - name: "add cloud-init config"
+            image: quay.io/tinkerbell/actions/writefile:latest
+            timeout: 90
+            environment:
+              CONTENTS: |
+                datasource:
+                  Ec2:
+                    metadata_urls: ["http://10.10.101.15:7172"]
+                    strict_id: false
+                manage_etc_hosts: localhost
+                warnings:
+                  dsid_missing_source: off      
+              DEST_DISK: {{`{{ formatPartition ( index .Hardware.Disks 0 ) 1 }}`}}
+              DEST_PATH: /etc/cloud/cloud.cfg.d/10_tinkerbell.cfg
+              DIRMODE: "0700"
+              FS_TYPE: ext4
+              GID: "0"
+              MODE: "0600"
+              UID: "0"
+          - name: "add cloud-init ds-identity"
+            image: quay.io/tinkerbell/actions/writefile:latest
+            timeout: 90
+            environment:
+              DEST_DISK: {{`{{ formatPartition ( index .Hardware.Disks 0 ) 1 }}`}}
+              FS_TYPE: ext4
+              DEST_PATH: /etc/cloud/ds-identify.cfg
+              UID: 0
+              GID: 0
+              MODE: 0600
+              DIRMODE: 0700
+              CONTENTS: |
+                datasource: Ec2
+          - name: "kexec into os"
+            image: ghcr.io/jacobweinstock/waitdaemon:latest
+            timeout: 90
+            pid: host
+            environment:
+              BLOCK_DEVICE: {{`{{ formatPartition ( index .Hardware.Disks 0 ) 1 }}`}}
+              FS_TYPE: ext4
+              IMAGE: quay.io/tinkerbell/actions/kexec:latest
+              WAIT_SECONDS: 10
+            volumes:
+              - /var/run/docker.sock:/var/run/docker.sock

@@ -1,0 +1,17 @@
+apiVersion: tinkerbell.org/v1alpha1
+kind: WorkflowRuleSet
+metadata:
+  name: default-ruleset
+  namespace: tinkerbell
+spec:
+  rules:
+  - '{"networkInterfaces": {"mac": [{"wildcard": "*"}]}}'
+  workflow:
+    addAttributes: true
+    disabled: true
+    namespace: tinkerbell
+    template:
+      agentValue: worker_id
+      kvs:
+        additional_value: im a value
+      ref: uds-os
