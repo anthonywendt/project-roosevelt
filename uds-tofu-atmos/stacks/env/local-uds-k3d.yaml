@@ -1,0 +1,17 @@
+### This local-uds-k3d stack will use uds-k3d to provide k8s and uds-k3d magic
+
+# yaml-language-server: $schema=https://atmos.tools/schemas/atmos/atmos-manifest/1.0/atmos-manifest.json
+vars:
+  stage: "local-uds-k3d"
+
+import:
+  - common/_versions.yaml
+  - common/10-uds-k3d.yaml
+  - common/20-zarf-init.yaml
+  - common/30-core-base.yaml
+  - common/40-core-identity-auth.yaml
+  - common/50-podinfo.yaml
+
+# placeholder to show how stacks work in atmos
+
+# add custom overrides specific for staging here

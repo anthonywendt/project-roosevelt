@@ -83,6 +83,14 @@ tasks:
 ####
 #### UDS package and bundle tasks ####
 ####
+  - name: create-podinfo-package
+    description: Create the podinfo UDS package
+    actions:
+      - task: create:package
+        with:
+          path: packages/podinfo
+          architecture: amd64
+
   - name: full-bootstrap
     description: Create and deploy the bootstrap bundle, then create a Keycloak user
     actions:
@@ -161,3 +169,14 @@ tasks:
           path: bundles/tinkerbell-bundle
           config_file_name: ${{ .inputs.config_file_name }}
           architecture: amd64
+
+####
+#### UDS Tofu Things ####
+####
+
+  - name: deploy-with-uds-tofu
+    description: Deploy UDS Tofu setup to the cluster
+    actions:
+      - task: create-podinfo-package
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc tofu init || true && TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc tofu apply --auto-approve
+        dir: uds-tofu

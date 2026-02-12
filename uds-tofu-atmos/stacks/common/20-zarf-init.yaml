@@ -1,0 +1,14 @@
+
+components:
+  terraform:
+    zarf-init:
+      settings:
+        providers:
+          - "uds"
+      vars:
+        package_requirements:
+          source: "oci://ghcr.io/zarf-dev/packages/init:{{.vars.zarf_version}}"
+          package_vars: {}
+          components:
+            - name: "git-server" # deploy optional component for this dev-to-prd workflow
+        package_overrides: []

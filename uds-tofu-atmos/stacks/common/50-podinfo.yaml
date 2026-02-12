@@ -1,0 +1,21 @@
+components:
+  terraform:
+    podinfo:
+      settings:
+        providers:
+          - "uds"
+        depends_on:
+          1:
+            component: "core-base"
+      vars:
+        package_requirements:
+          source: "../../../package/podinfo/zarf-package-podinfo-{{.vars.architecture}}-{{.vars.podinfo_version}}.tar.zst"
+          package_vars: {}
+        package_overrides:
+          - component_name: "podinfo"
+            chart_name: "podinfo"
+            values:
+              # - path: "ui.message"
+              #   value: "where it begins"
+              - path: "replicaCount"
+                value: 1

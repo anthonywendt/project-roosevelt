@@ -1,0 +1,55 @@
+# This will be used to generate these atmos components tofu resources
+apiVersion: atmos/v1
+kind: AtmosVendorConfig
+metadata:
+  name: tofu-provider-demo
+  description: Vendoring Terraform components from defenseunicorns GitHub organization
+spec:
+  sources:
+    - component: "uds-k3d"
+      source: "./modules/uds-package"
+      version: "local"
+      targets:
+        - "/components/terraform/uds-k3d"
+
+    - component: "zarf-init"
+      source: "./modules/uds-package"
+      version: "local"
+      targets:
+        - "/components/terraform/zarf-init"
+
+    - component: "metal-lb"
+      source: "./modules/uds-package"
+      version: "local"
+      targets:
+        - "/components/terraform/metal-lb"
+
+    - component: "core-base"
+      source: "./modules/uds-package"
+      version: "local"
+      targets:
+        - "/components/terraform/core-base"
+
+    - component: "core-identity-authorization"
+      source: "./modules/uds-package"
+      version: "local"
+      targets:
+        - "/components/terraform/core-identity-authorization"
+
+    - component: "core-monitoring"
+      source: "./modules/uds-package"
+      version: "local"
+      targets:
+        - "/components/terraform/core-monitoring"
+
+    - component: "uds-ui"
+      source: "./modules/uds-package"
+      version: "local"
+      targets:
+        - "/components/terraform/uds-ui"
+
+    - component: "podinfo"
+      source: "./modules/uds-package"
+      version: "local"
+      targets:
+        - "/components/terraform/podinfo"

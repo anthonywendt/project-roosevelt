@@ -1,0 +1,64 @@
+### This dev stack will assume k8s and the need for metallb
+
+# yaml-language-server: $schema=https://atmos.tools/schemas/atmos/atmos-manifest/1.0/atmos-manifest.json
+vars:
+  stage: "roosevelt"
+
+import:
+  - common/_versions.yaml
+  - common/20-zarf-init.yaml
+  - common/30-core-base.yaml
+  - common/40-core-identity-auth.yaml
+  - common/50-podinfo.yaml
+  - common/60-metal-lb.yaml
+  - common/70-core-monitoring.yaml
+  - common/80-uds-ui.yaml
+  - secrets/roosevelt.enc.yaml
+
+# Environment level overrides for this stack
+components:
+  terraform:
+    metal-lb:
+      vars:
+        package_requirements:
+          source: "oci://ghcr.io/uds-packages/metallb:{{.vars.metal_lb_version}}"
+          package_vars:
+            IP_ADDRESS_POOL: "192.168.69.200-192.168.69.220"
+
+    core-identity-authorization:
+      vars:
+        package_overrides:
+          - component_name: "keycloak"
+            chart_name: "keycloak"
+            values:
+              - path: "insecureAdminPasswordGeneration.enabled"
+                value: "true"
+
+    podinfo:
+      vars:
+        package_overrides:
+          - component_name: "podinfo"
+            chart_name: "podinfo"
+            values:
+              # can't have sensitive values that match normal values. Using this as a sensitive value example in the roosevelt.enc.yaml file
+              # - path: "ui.message"
+              #   value: "Roosevelt"
+              - path: "replicaCount"
+                value: 2
+
+    uds-ui:
+      vars:
+        package_overrides:
+          - component_name: "uds-ui"
+            chart_name: "uds-ui"
+            values:
+              - path: resources.requests.memory
+                value: "1Gi"
+              - path: resources.limits.memory
+                value: "10Gi"
+              - path: resources.requests.cpu
+                value: "100m"
+              - path: resources.limits.cpu
+                value: "4000m"
+              - path: sso.enabled
+                value: "false"

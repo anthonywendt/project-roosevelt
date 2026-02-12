@@ -1,0 +1,14 @@
+
+components:
+  terraform:
+    metal-lb:
+      settings:
+        providers:
+          - "uds"
+        depends_on:
+          1:
+            component: "zarf-init"
+      vars:
+        package_requirements:
+          source: "oci://ghcr.io/uds-packages/metallb:{{.vars.metal_lb_version}}"
+          package_vars: {}

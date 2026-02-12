@@ -1,0 +1,40 @@
+tasks:
+  - name: demo-setup
+    actions:
+      # ensure pre-requisites are met
+      # - cmd: ./scripts/preflight.sh
+      # download and install the provider & setup .tofurc for defenseunicorns provider
+      # - cmd: ./scripts/download-provider.sh
+      # create local zarf package
+      - cmd: cd ./package/podinfo && uds zarf package create -a amd64 --confirm
+
+  - name: tofu-up
+    actions:
+      # vendor local modules
+      - cmd: atmos vendor pull
+      # Initialize components (ignore provider errors, backend/vars will be set up)
+      # - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform init uds-k3d -s dev || true
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform init zarf-init -s roosevelt || true
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform init metal-lb -s roosevelt || true
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform init core-base -s roosevelt || true
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform init core-identity-authorization -s roosevelt || true
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform init core-monitoring -s roosevelt || true
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform init podinfo -s roosevelt || true
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform init uds-ui -s roosevelt || true
+      # Apply components in dependency order
+      # - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform apply uds-k3d -s dev --skip-init -auto-approve
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform apply zarf-init -s roosevelt --skip-init -auto-approve
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform apply metal-lb -s roosevelt --skip-init -auto-approve
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform apply core-base -s roosevelt --skip-init -auto-approve
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform apply core-identity-authorization -s roosevelt --skip-init -auto-approve
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform apply core-monitoring -s roosevelt --skip-init -auto-approve
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform apply podinfo -s roosevelt --skip-init -auto-approve
+      - cmd: TF_CLI_CONFIG_FILE=$(pwd)/uds-tofurc atmos terraform apply uds-ui -s roosevelt --skip-init -auto-approve
+
+  - name: demo-down
+    actions:
+      # Destroy in reverse order
+      - cmd: k3d cluster delete uds
+      - cmd: rm -rf components/terraform
+      - cmd: rm -rf plugins/
+      - cmd: rm -f .tfrc

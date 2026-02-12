@@ -1,0 +1,38 @@
+kind: ZarfPackageConfig
+metadata:
+  name: podinfo
+  # renovate: datasource=github-releases depName=stefanprodan/podinfo
+  version: 6.9.4
+
+variables:
+  - name: ENV
+    default: dev 
+
+components:
+  - name: podinfo
+    required: true
+    charts:
+      - name: podinfo
+        # renovate: datasource=github-releases depName=stefanprodan/podinfo
+        version: 6.9.4
+        namespace: podinfo
+        url: oci://ghcr.io/stefanprodan/charts/podinfo
+        valuesFiles:
+          - values/common-values.yaml
+    manifests:
+      - name: podinfo-config
+        namespace: podinfo
+        files:
+          - manifests/uds-package.yaml
+    actions:
+      onDeploy:
+        after:
+          - wait:
+              cluster:
+                kind: deployment
+                name: podinfo
+                namespace: podinfo
+                condition: available
+    images:
+      # renovate: datasource=docker depName=ghcr.io/stefanprodan/podinfo
+      - ghcr.io/stefanprodan/podinfo:6.9.4

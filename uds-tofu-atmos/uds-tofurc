@@ -1,0 +1,13 @@
+provider_installation {
+  # Primary registry: GHCR
+  oci_mirror {
+    repository_template = "ghcr.io/defenseunicorns/opentofu-providers/${namespace}/${type}"
+    include             = ["ghcr.io/*/*"]
+  }
+
+  # Fallback registry: registry.defenseunicorns.com
+  oci_mirror {
+    repository_template = "registry.defenseunicorns.com/${namespace}/${type}"
+    include             = ["registry.defenseunicorns.com/*/*"]
+  }
+}

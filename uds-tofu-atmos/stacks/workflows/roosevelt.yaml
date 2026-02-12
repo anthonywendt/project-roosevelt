@@ -1,0 +1,157 @@
+name: Deploy Roosevelt Environment
+description: |
+  Complete deployment workflow for my roosevelt environment.
+
+  Architecture: get it working
+    - ...
+
+  Benefits: Clear separation of concerns and standard remote state pattern.
+
+  Prerequisites:
+    - k3s cluster is running
+
+workflows:
+  validate-and-plan-all:
+    description: |
+      Plan applications changes (read-only, no deployments).
+
+      PREREQUISITES:
+        - Cluster must be deployed first
+
+      LIMITATIONS:
+        - ...
+
+      Or use the deploy workflow which handles all planning and deployment.
+    steps:
+      - name: atmos vendor pull
+        command: vendor-pull
+        description: Vendor all dependencies for local development
+
+      # Validation Phase
+      - name: validate-zarf-init
+        command: validate component zarf-init -s roosevelt
+        description: Validate zarf-init component
+
+      - name: validate-metal-lb
+        command: validate component metal-lb -s roosevelt
+        description: Validate metal-lb component
+
+      - name: validate-core-base
+        command: validate component core-base -s roosevelt
+        description: Validate core-base component
+
+      - name: validate-core-identity-authorization
+        command: validate component core-identity-authorization -s roosevelt
+        description: Validate core-identity-authorization component
+
+      - name: validate-core-monitoring
+        command: validate component core-monitoring -s roosevelt
+        description: Validate core-monitoring component
+
+      - name: validate-uds-ui
+        command: validate component uds-ui -s roosevelt
+        description: Validate uds-ui component
+
+      # Planning Phase - UDS Core Only (requires active cluster)
+      - name: plan-zarf-init
+        command: terraform plan zarf-init -s roosevelt
+        description: Plan zarf-init (read-only operation)
+
+      - name: plan-metal-lb
+        command: terraform plan metal-lb -s roosevelt
+        description: Plan MetalLB (read-only operation)
+
+      - name: plan-core-base
+        command: terraform plan core-base -s roosevelt
+        description: Plan UDS Core (read-only operation)
+
+      - name: plan-core-identity-authorization
+        command: terraform plan core-identity-authorization -s roosevelt
+        description: Plan core-identity-authorization (read-only operation)
+
+      - name: plan-core-monitoring
+        command: terraform plan core-monitoring -s roosevelt
+        description: Plan core-monitoring component (read-only operation)
+
+      - name: plan-uds-ui
+        command: terraform plan uds-ui -s roosevelt
+        description: Plan uds-ui (read-only operation)
+
+      - name: plan-podinfo
+        command: terraform plan podinfo -s roosevelt
+        description: Plan podinfo (read-only operation)
+
+  deploy-all:
+    description: Deploy complete roosevelt environment
+    steps:
+      - name: atmos vendor pull
+        command: vendor-pull
+        description: Vendor all dependencies for local development
+
+      - name: deploy-zarf-init
+        command: terraform deploy zarf-init -s roosevelt -auto-approve
+        description: Deploy zarf-init component
+
+      - name: deploy-metal-lb
+        command: terraform deploy metal-lb -s roosevelt -auto-approve
+        description: Deploy MetalLB component
+
+      - name: deploy-core-base
+        command: terraform deploy core-base -s roosevelt -auto-approve
+        description: Deploy UDS Core components
+
+      - name: deploy-core-identity-authorization
+        command: terraform deploy core-identity-authorization -s roosevelt -auto-approve
+        description: Deploy core-identity-authorization component
+
+      - name: deploy-core-monitoring
+        command: terraform deploy core-monitoring -s roosevelt -auto-approve
+        description: Deploy core-monitoring component
+
+      - name: deploy-uds-ui
+        command: terraform deploy uds-ui -s roosevelt -auto-approve
+        description: Deploy uds-ui component
+
+      - name: deploy-podinfo
+        command: terraform deploy podinfo -s roosevelt -auto-approve
+        description: Deploy podinfo component
+
+  destroy-all:
+    description: Destroy local environment in reverse order (observability → identity → core → cluster)
+    steps:
+      - name: destroy-podinfo
+        command: terraform destroy podinfo -s roosevelt -auto-approve
+        description: Destroy podinfo component
+
+      - name: destroy-uds-ui
+        command: terraform destroy uds-ui -s roosevelt -auto-approve
+        description: Destroy uds-ui component
+
+      - name: destroy-core-monitoring
+        command: terraform destroy core-monitoring -s roosevelt -auto-approve
+        description: Destroy core-monitoring component
+
+      - name: destroy-core-identity-authorization
+        command: terraform destroy core-identity-authorization -s roosevelt -auto-approve
+        description: Destroy core-identity-authorization component
+
+      - name: destroy-core-base
+        command: terraform destroy core-base -s roosevelt -auto-approve
+        description: Destroy UDS Core components
+
+      - name: destroy-metal-lb
+        command: terraform destroy metal-lb -s roosevelt -auto-approve
+        description: Destroy MetalLB component
+
+      - name: desroy-zarf-init
+        command: terraform destroy zarf-init -s roosevelt -auto-approve
+        description: Destroy zarf-init component
+
+  rebuild:
+    description: Rebuild roosevelt environment from scratch (destroy → deploy)
+    steps:
+      - name: destroy
+        command: workflow destroy-all
+
+      - name: deploy
+        command: workflow deploy-all

@@ -1,0 +1,37 @@
+kind: ZarfPackageConfig
+metadata:
+  name: podinfo
+  # x-release-please-start-version
+  version: 6.9.1
+  # x-release-please-end
+
+variables:
+  - name: ENV
+    default: dev 
+
+components:
+  - name: podinfo
+    required: true
+    charts:
+      - name: podinfo
+        version: 6.9.1
+        namespace: podinfo
+        url: oci://ghcr.io/stefanprodan/charts/podinfo
+        valuesFiles:
+          - values/common-values.yaml
+    manifests:
+      - name: podinfo-config
+        namespace: podinfo
+        files:
+          - manifests/uds-package.yaml
+    actions:
+      onDeploy:
+        after:
+          - wait:
+              cluster:
+                kind: deployment
+                name: podinfo
+                namespace: podinfo
+                condition: available
+    images:
+      - ghcr.io/stefanprodan/podinfo:6.9.1

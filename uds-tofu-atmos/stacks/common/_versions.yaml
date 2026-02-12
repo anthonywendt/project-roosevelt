@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://atmos.tools/schemas/atmos/atmos-manifest/1.0/atmos-manifest.json
+
+# global vars
+vars:
+  architecture: "amd64"
+  flavor: "upstream"
+  uds_k3d_version: "0.19.4"
+  zarf_version: "v0.68.1"
+  uds_version: "0.60.1-{{.vars.flavor}}"
+  podinfo_version: "6.9.1"
+  metal_lb_version: "0.15.2-uds.4-upstream"
+  uds_ui_version: "0.23.4-unicorn"
+  domain: "uds.dev"
+
+terraform:
+  backend_type: local
+  backend:
+    local:
+      path: "./dev.tfstate"

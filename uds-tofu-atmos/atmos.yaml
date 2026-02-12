@@ -1,0 +1,71 @@
+# Atmos configuration
+components:
+  terraform:
+    base_path: "uds-tofu-atmos/components/terraform"
+    command: "tofu" # Explicitly setting OpenTofu binary
+    apply_auto_approve: true
+    auto_generate_backend_file: true
+    backend_type: "local"
+    backend_section: "terraform"
+    deploy_run_init: false
+    plan_run_init: false
+    init_run_reconfigure: false
+
+    uds-k3d:
+      settings:
+        init_run: false
+
+stacks:
+  base_path: "uds-tofu-atmos/stacks"
+  included_paths:
+    - "env/*"
+    - "**/*.yaml"
+  excluded_paths:
+    - "**/_defaults.yaml"
+
+  name_template: "{{.vars.stage}}"
+  process:
+    enabled: true
+    sections:
+      vars: true
+      components: true # Enable processing of the `components` section
+      imports: true
+
+workflows:
+  base_path: "stacks/workflows"
+
+settings:
+  list_merge_strategy: append
+
+templates:
+  settings:
+    enabled: true
+    delimiters: []
+    evaluations: 10
+    sprig:
+      enabled: true
+    gomplate:
+      enabled: true
+      timeout: 5
+      datasources: {}
+
+logs:
+  verbose: true
+  colors: true
+  level: "Info"
+
+# Validation schemas (for validating atmos stacks and components)
+schemas:
+  # JSON Schema to validate Atmos manifests
+  atmos:
+    # Can also be set using 'ATMOS_SCHEMAS_ATMOS_MANIFEST' ENV var, or '--schemas-atmos-manifest' command-line arguments
+    # Supports both absolute and relative paths (relative to the `base_path` setting in `atmos.yaml`)
+    manifest: "https://atmos.tools/schemas/atmos/atmos-manifest/1.0/atmos-manifest.json"
+
+# Custom CLI commands
+commands:
+  - name: vendor-pull
+    description: "Clean and pull the components directory"
+    steps:
+      - >
+        atmos vendor pull --everything
