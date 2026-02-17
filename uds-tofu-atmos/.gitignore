@@ -47,3 +47,6 @@ plugins/defenseunicorns
 
 # Ignore atmos  cache
 .atmos/
+
+# Ignore decrypted secrets
+decrypted/
