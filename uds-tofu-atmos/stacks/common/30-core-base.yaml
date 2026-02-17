@@ -1,16 +1,9 @@
-
-# Common overrides for this stack for core-base
 components:
   terraform:
     core-base:
       settings:
         providers:
           - "uds"
-        depends_on:
-          1:
-            component: "zarf-init"
-          2:
-            component: "metal-lb"
       vars:
         package_requirements:
           source: "oci://ghcr.io/defenseunicorns/packages/uds/core-base:{{.vars.uds_version}}"
@@ -18,40 +11,33 @@ components:
           components:
             # - name: "istio-passthrough-gateway" # uncomment to deploy optional component for this dev-to-prd workflow
             # - name: "istio-egress-gateway" # uncomment to deploy optional component for this dev-to-prd workflow
-        package_overrides:
-          - component_name: "pepr-uds-core"
-            chart_name: "module"
-            values:
-              - path: "additionalIgnoredNamespaces"
-                value: |
+        package_overrides_map:
+          # 1st key = UDS package component name
+          # (maps to Terraform uds_package.component.name)
+          pepr-uds-core:
+            # 2nd key = Helm chart name inside that component
+            # (maps to Terraform uds_package.component.override.chart_name)
+            module:
+              # Non-sensitive chart values
+              values:
+                additionalIgnoredNamespaces: |
                   - uds-dev-stack
-              - path: "watcher.resources.requests.memory"
-                value: "64Mi"
-              - path: "admission.resources.requests.memory"
-                value: "64Mi"
-              - path: "watcher.resources.requests.cpu"
-                value: "100m"
-              - path: "admission.resources.requests.cpu"
-                value: "100m"
+                watcher.resources.requests.memory: "64Mi"
+                admission.resources.requests.memory: "64Mi"
+                watcher.resources.requests.cpu: "100m"
+                admission.resources.requests.cpu: "100m"
 
-          - component_name: "istio-controlplane"
-            chart_name: "istiod"
-            values:
-              - path: "resources.requests.memory"
-                value: "1024Mi"
-              - path: "resources.requests.cpu"
-                value: "100m"
-              - path: "global.proxy.resources.requests.memory"
-                value: "40Mi"
-              - path: "global.proxy.resources.limits.memory"
-                value: "1024Mi"
-              - path: "global.proxy.resources.requests.cpu"
-                value: "10m"
-              - path: "global.proxy.resources.limits.cpu"
-                value: "2000m"
+          istio-controlplane:
+            istiod:
+              values:
+                resources.requests.memory: "1024Mi"
+                resources.requests.cpu: "100m"
+                global.proxy.resources.requests.memory: "40Mi"
+                global.proxy.resources.limits.memory: "1024Mi"
+                global.proxy.resources.requests.cpu: "10m"
+                global.proxy.resources.limits.cpu: "2000m"
 
-          - component_name: "istio-admin-gateway"
-            chart_name: "uds-istio-config"
-            values:
-              - path: "tls.supportTLSV1_2"
-                value: false
+          istio-admin-gateway:
+            uds-istio-config:
+              values:
+                tls.supportTLSV1_2: false

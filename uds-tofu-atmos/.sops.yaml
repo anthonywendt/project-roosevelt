@@ -1,0 +1,18 @@
+creation_rules:
+  # Local environment - Encrypted secrets files
+  - path_regex: stacks/secrets/roosevelt.*\.yaml$
+    age: >-
+      age10yzrz67spcdtypphctxqtygnn2fjptvryk34nk294pfpeclljyvqn0r873
+    # # Marvin environment - Encrypted secrets files
+    # - path_regex: stacks/secrets/marvin.*\.yaml$
+    #   age: >-
+    #     age1dmxw2j4aljq3hht2m3tlatlv8kq9hx3prqyeu07klnm75r2gz3usvycvhz #magic___^_^___line
+    # # Orch environment - Encrypted secrets files
+    # - path_regex: stacks/secrets/orch.*\.yaml$
+    #   age: >-
+    #     age1dmxw2j4aljq3hht2m3tlatlv8kq9hx3prqyeu07klnm75r2gz3usvycvhz #magic___^_^___line
+    # # Production environment - Encrypted secrets files
+    # - path_regex: stacks/secrets/prod.*\.yaml$
+    #   age: >-
+    #     age1dmxw2j4aljq3hht2m3tlatlv8kq9hx3prqyeu07klnm75r2gz3usvycvhz
+  # Encrypt/decrypt workflow paths                                         

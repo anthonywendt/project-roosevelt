@@ -4,18 +4,18 @@ components:
       settings:
         providers:
           - "uds"
-        depends_on:
-          1:
-            component: "core-base"
       vars:
         package_requirements:
           source: "../../../package/podinfo/zarf-package-podinfo-{{.vars.architecture}}-{{.vars.podinfo_version}}.tar.zst"
           package_vars: {}
-        package_overrides:
-          - component_name: "podinfo"
-            chart_name: "podinfo"
-            values:
-              # - path: "ui.message"
-              #   value: "where it begins"
-              - path: "replicaCount"
-                value: 1
+        package_overrides_map:
+          # 1st key = UDS package component name
+          # (maps to Terraform uds_package.component.name)
+          podinfo:
+            # 2nd key = Helm chart name inside that component
+            # (maps to Terraform uds_package.component.override.chart_name)
+            # It is also "podinfo" here because the component and chart share the same name.
+            podinfo:
+              # Non-sensitive chart values
+              values:
+                replicaCount: 1

@@ -11,6 +11,21 @@ description: |
     - k3s cluster is running
 
 workflows:
+  setup:
+    description: Initial setup things
+    steps:
+      - name: atmos vendor pull
+        command: vendor-pull
+        description: Vendor all dependencies for local development
+
+      - name: build-podinfo-package
+        type: shell
+        command: cd ./package/podinfo && uds zarf package create -a amd64 --confirm
+
+      - name: decrypt-secrets
+        type: shell
+        command: mkdir -p stacks/secrets/roosevelt/decrypted && sops -d --output stacks/secrets/roosevelt/decrypted/tmp.yaml stacks/secrets/roosevelt/roosevelt.enc.yaml
+
   validate-and-plan-all:
     description: |
       Plan applications changes (read-only, no deployments).

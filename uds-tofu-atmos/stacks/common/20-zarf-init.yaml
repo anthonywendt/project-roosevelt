@@ -11,4 +11,4 @@ components:
           package_vars: {}
           components:
             - name: "git-server" # deploy optional component for this dev-to-prd workflow
-        package_overrides: []
+        package_overrides_map: {}

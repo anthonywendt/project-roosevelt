@@ -5,54 +5,39 @@ components:
       settings:
         providers:
           - "uds"
-        depends_on:
-          1:
-            component: "core-base"
       vars:
         package_requirements:
           source: "oci://ghcr.io/defenseunicorns/packages/uds/core-identity-authorization:{{.vars.uds_version}}"
           package_vars: {}
-        package_overrides:
-          - component_name: "authservice"
-            chart_name: "authservice"
-            values:
-              - path: "replicaCount"
-                value: 1
+        package_overrides_map:
+          # 1st key = UDS package component name
+          # (maps to Terraform uds_package.component.name)
+          authservice:
+            # 2nd key = Helm chart name inside that component
+            # (maps to Terraform uds_package.component.override.chart_name)
+            authservice:
+              # Non-sensitive chart values
+              values:
+                replicaCount: 1
 
-          - component_name: "keycloak"
-            chart_name: "keycloak"
-            values:
-              - path: "devMode"
-                value: true
-              - path: "resources.requests.memory"
-                value: "512Mi"
-              - path: "resources.requests.cpu"
-                value: "100m"
-              - path: "resources.limits.memory"
-                value: "1Gi"
-              - path: "resources.limits.cpu"
-                value: "1000m"
-              - path: "waypoint.horizontalPodAutoscaler.enabled"
-                value: false
-              - path: "waypoint.deployment.requests.cpu"
-                value: "100m"
-              - path: "waypoint.deployment.requests.memory"
-                value: "64Mi"
-              - path: "realmInitEnv.GOOGLE_IDP_ENABLED"
-                value: "true"
-              - path: "realmInitEnv.GOOGLE_IDP_ID"
-                value: "C01881u7t"
-              - path: "realmInitEnv.GOOGLE_IDP_SIGNING_CERT"
-                value: "MIIDdDCCAlygAwIBAgIGAXkza8/+MA0GCSqGSIb3DQEBCwUAMHsxFDASBgNVBAoTC0dvb2dsZSBJbmMuMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MQ8wDQYDVQQDEwZHb29nbGUxGDAWBgNVBAsTD0dvb2dsZSBGb3IgV29yazELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWEwHhcNMjEwNTAzMTgwOTMzWhcNMjYwNTAyMTgwOTMzWjB7MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEPMA0GA1UEAxMGR29vZ2xlMRgwFgYDVQQLEw9Hb29nbGUgRm9yIFdvcmsxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu9en1CO4EriCJ5jzss6TqUmtYMXXRBfsSkdnhVvMx0fYOegxy0d8DouUEEITlPW+YPBG1T72kiV9KGtKVw90ff4Y+siNDNrME81w4K3Zjo6VukvATfD05lVzh9JyO0VxdzBpdRXSJqBOVLo38cwVbyTcX5Nk/nHENjDSN7as3UvbXa7eT4Xswy1GARGAZ3MAaLTZn1+Cctn0MDKniQOS6QDryYgKWz8ko/H4T9XCxgjHJVsL6obezaPZF+pibyyVPCuePssuxUbFHF6yiP5rCfAsK6VTv/8pbYGauGpYHDgnM941RtN2ThltORgi+P9i9wQ8VRBQpEm1RvDXOqJ7OwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQB5L26tpco6EgVunmZYBAFiFE+Dhqwvy4J1iKuXApaKhqabeKJ8kBv/pJBnZl7CRF5Pv8dLfhNoNm2BsXbpH91/rhDj9zl/Imkc5ttVGbXbKSBpUaduwBZpsVIX0xCugNPflHFz9kf/zsGWb3X6wO/2eNewj3fr8jNRC/KWQ7otcdqwYbe1BO4yo6FjAIs5L+wCQcc2JjRWgBon4wL25ccX3nH8aMHl4/gz5trKwPqH0/lYcScJmMSRPzHbmd62LlmZE9eWEwuYJ+h8fssTZA9JTMXvkPhg05w2snaM9XdSuXIRo4UtqGpMQC0KRMmwDHbVSluX63wn7iSZD4TGHZGa"
-              - path: "realmInitEnv.GOOGLE_IDP_NAME_ID_FORMAT"
-                value: "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
-              - path: "realmInitEnv.GOOGLE_IDP_CORE_ENTITY_ID"
-                value: "https://sso.uds.dev/realms/uds"
-              - path: "realmInitEnv.GOOGLE_IDP_ADMIN_GROUP"
-                value: "uds-core-dev-admin"
-              - path: "realmInitEnv.GOOGLE_IDP_AUDITOR_GROUP"
-                value: "uds-core-dev-auditor"
-              - path: "env"
-                value: |
+          keycloak:
+            keycloak:
+              values:
+                devMode: true
+                resources.requests.memory: "512Mi"
+                resources.requests.cpu: "100m"
+                resources.limits.memory: "1Gi"
+                resources.limits.cpu: "1000m"
+                waypoint.horizontalPodAutoscaler.enabled: false
+                waypoint.deployment.requests.cpu: "100m"
+                waypoint.deployment.requests.memory: "64Mi"
+                realmInitEnv.GOOGLE_IDP_ENABLED: "true"
+                realmInitEnv.GOOGLE_IDP_ID: "C01881u7t"
+                realmInitEnv.GOOGLE_IDP_SIGNING_CERT: "MIIDdDCCAlygAwIBAgIGAXkza8/+MA0GCSqGSIb3DQEBCwUAMHsxFDASBgNVBAoTC0dvb2dsZSBJbmMuMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MQ8wDQYDVQQDEwZHb29nbGUxGDAWBgNVBAsTD0dvb2dsZSBGb3IgV29yazELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWEwHhcNMjEwNTAzMTgwOTMzWhcNMjYwNTAyMTgwOTMzWjB7MRQwEgYDVQQKEwtHb29nbGUgSW5jLjEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzEPMA0GA1UEAxMGR29vZ2xlMRgwFgYDVQQLEw9Hb29nbGUgRm9yIFdvcmsxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu9en1CO4EriCJ5jzss6TqUmtYMXXRBfsSkdnhVvMx0fYOegxy0d8DouUEEITlPW+YPBG1T72kiV9KGtKVw90ff4Y+siNDNrME81w4K3Zjo6VukvATfD05lVzh9JyO0VxdzBpdRXSJqBOVLo38cwVbyTcX5Nk/nHENjDSN7as3UvbXa7eT4Xswy1GARGAZ3MAaLTZn1+Cctn0MDKniQOS6QDryYgKWz8ko/H4T9XCxgjHJVsL6obezaPZF+pibyyVPCuePssuxUbFHF6yiP5rCfAsK6VTv/8pbYGauGpYHDgnM941RtN2ThltORgi+P9i9wQ8VRBQpEm1RvDXOqJ7OwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQB5L26tpco6EgVunmZYBAFiFE+Dhqwvy4J1iKuXApaKhqabeKJ8kBv/pJBnZl7CRF5Pv8dLfhNoNm2BsXbpH91/rhDj9zl/Imkc5ttVGbXbKSBpUaduwBZpsVIX0xCugNPflHFz9kf/zsGWb3X6wO/2eNewj3fr8jNRC/KWQ7otcdqwYbe1BO4yo6FjAIs5L+wCQcc2JjRWgBon4wL25ccX3nH8aMHl4/gz5trKwPqH0/lYcScJmMSRPzHbmd62LlmZE9eWEwuYJ+h8fssTZA9JTMXvkPhg05w2snaM9XdSuXIRo4UtqGpMQC0KRMmwDHbVSluX63wn7iSZD4TGHZGa"
+                realmInitEnv.GOOGLE_IDP_NAME_ID_FORMAT: "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+                realmInitEnv.GOOGLE_IDP_CORE_ENTITY_ID: "https://sso.uds.dev/realms/uds"
+                realmInitEnv.GOOGLE_IDP_ADMIN_GROUP: "uds-core-dev-admin"
+                realmInitEnv.GOOGLE_IDP_AUDITOR_GROUP: "uds-core-dev-auditor"
+                env: |
                   - name: JAVA_OPTS_KC_HEAP
                     value: "-XX:MaxRAMPercentage=70 -XX:MinRAMPercentage=70 -XX:InitialRAMPercentage=50 -XX:MaxRAM=1G"

@@ -9,19 +9,11 @@ variable "package_requirements" {
   })
 }
 
-variable "package_overrides" {
-  description = "Package overrides for components, charts, and values"
-  type = list(object({
-    component_name = string
-    chart_name     = optional(string)
-    values = optional(list(object({
-      path  = string
-      value = any
-    })), [])
-    sensitive_values = optional(list(object({
-      path  = string
-      value = any
-    })), [])
-  }))
-  default = []
+variable "package_overrides_map" {
+  description = "Preferred package overrides keyed by component, chart, and path"
+  type = map(map(object({
+    values           = optional(map(any), {})
+    sensitive_values = optional(map(any), {})
+  })))
+  default = {}
 }

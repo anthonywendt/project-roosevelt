@@ -8,24 +8,20 @@ components:
       vars:
         package_requirements:
           source: "oci://ghcr.io/defenseunicorns/packages/uds-k3d:{{.vars.uds_k3d_version}}"
-          package_vars: {}
-        package_overrides:
-          - component_name: "uds-dev-stack"
-            chart_name: "minio"
-            values:
-              - path: "buckets[0]"
-                value: "test-b-1"
-              - path: "buckets[1]"
-                value: "test-b-2"
-              - path: "svcaccts[0]"
-                value: "test-svcacct-1"
-              - path: "svcaccts[1]"
-                value: "test-svcacct-2"
-              - path: "users[0]"
-                value: "test-user-1"
-              - path: "users[1]"
-                value: "test-user-2"
-              - path: "policies[0]"
-                value: "test-policy-1"
-              - path: "policies[1]"
-                value: "test-policy-2"
+        package_overrides_map:
+          # 1st key = UDS package component name
+          # (maps to Terraform uds_package.component.name)
+          uds-dev-stack:
+            # 2nd key = Helm chart name inside that component
+            # (maps to Terraform uds_package.component.override.chart_name)
+            minio:
+              # Non-sensitive chart values
+              values:
+                buckets[0]: "test-b-1"
+                buckets[1]: "test-b-2"
+                svcaccts[0]: "test-svcacct-1"
+                svcaccts[1]: "test-svcacct-2"
+                users[0]: "test-user-1"
+                users[1]: "test-user-2"
+                policies[0]: "test-policy-1"
+                policies[1]: "test-policy-2"
