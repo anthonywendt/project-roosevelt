@@ -20,11 +20,11 @@ workflows:
 
       - name: build-podinfo-package
         type: shell
-        command: cd ./package/podinfo && uds zarf package create -a amd64 --confirm
+        command: cd ./packages/podinfo && uds zarf package create -a amd64 --confirm
 
       - name: decrypt-secrets
         type: shell
-        command: mkdir -p stacks/secrets/roosevelt/decrypted && sops -d --output stacks/secrets/roosevelt/decrypted/tmp.yaml stacks/secrets/roosevelt/roosevelt.enc.yaml
+        command: mkdir -p stacks/secrets/decrypted && sops -d --output stacks/secrets/decrypted/roosevelt.yaml stacks/secrets/roosevelt.enc.yaml
 
   validate-and-plan-all:
     description: |

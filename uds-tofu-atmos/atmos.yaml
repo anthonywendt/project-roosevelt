@@ -18,7 +18,7 @@ components:
 stacks:
   base_path: "uds-tofu-atmos/stacks"
   included_paths:
-    - "env/*"
+    - "deploy/*"
     - "**/*.yaml"
   excluded_paths:
     - "**/_defaults.yaml"

@@ -5,12 +5,12 @@ vars:
   stage: "local-uds-k3d"
 
 import:
-  - common/_versions.yaml
-  - common/10-uds-k3d.yaml
-  - common/20-zarf-init.yaml
-  - common/30-core-base.yaml
-  - common/40-core-identity-auth.yaml
-  - common/50-podinfo.yaml
+  - catalog/_versions.yaml
+  - catalog/10-uds-k3d.yaml
+  - catalog/20-zarf-init.yaml
+  - catalog/30-core-base.yaml
+  - catalog/40-core-identity-auth.yaml
+  - catalog/50-podinfo.yaml
 
 # placeholder to show how stacks work in atmos
 

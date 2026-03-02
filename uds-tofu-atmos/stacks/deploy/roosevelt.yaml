@@ -5,15 +5,16 @@ vars:
   stage: "roosevelt"
 
 import:
-  - common/_versions.yaml
-  - common/20-zarf-init.yaml
-  - common/30-core-base.yaml
-  - common/40-core-identity-auth.yaml
-  - common/50-podinfo.yaml
-  - common/60-metal-lb.yaml
-  - common/70-core-monitoring.yaml
-  - common/80-uds-ui.yaml
-  - secrets/roosevelt/decrypted/tmp.yaml
+  - catalog/_versions.yaml
+  - catalog/20-zarf-init.yaml
+  - catalog/30-core-base.yaml
+  - catalog/40-core-identity-auth.yaml
+  - catalog/50-podinfo.yaml
+  - catalog/60-metal-lb.yaml
+  - catalog/70-core-monitoring.yaml
+  - catalog/80-uds-ui.yaml
+
+  - secrets/decrypted/roosevelt.yaml
 
 # Environment level overrides for this stack
 components:
